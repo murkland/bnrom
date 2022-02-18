@@ -255,10 +255,28 @@ func main() {
 
 	r := bytes.NewReader(buf)
 
-	if _, err := r.Seek(0x00031CEC, os.SEEK_SET); err != nil {
+	romTitle, err := sprites.ReadROMTitle(r)
+	if err != nil {
 		log.Fatalf("%s", err)
 	}
-	s, err := sprites.Read(r, 815)
+
+	log.Printf("Game title: %s", romTitle)
+
+	romInfo, err := sprites.ReadROMInfo(r)
+	if err != nil {
+		log.Fatalf("%s", err)
+	}
+
+	if romInfo == nil {
+		log.Fatalf("unsupported game")
+	}
+
+	log.Printf("Game ID: %s", romInfo.ID)
+
+	if _, err := r.Seek(romInfo.Offset, os.SEEK_SET); err != nil {
+		log.Fatalf("%s", err)
+	}
+	s, err := sprites.Read(r, romInfo.Count)
 	if err != nil {
 		log.Fatalf("%s", err)
 	}

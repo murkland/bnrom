@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"image"
 	"image/color"
 	"image/draw"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/nbarena/gbarom/bgr555"
 	"github.com/nbarena/gbarom/lz77"
@@ -41,7 +43,7 @@ func ReadOAMEntry(r io.Reader) (*OAMEntry, error) {
 	var sizeAndFlip, poAndSm uint8
 
 	if err := binary.Read(r, binary.LittleEndian, &tileIdx); err != nil {
-		return &ent, err
+		return &ent, fmt.Errorf("%w while reading tile index", err)
 	}
 
 	if tileIdx == 0xFF {
@@ -52,22 +54,22 @@ func ReadOAMEntry(r io.Reader) (*OAMEntry, error) {
 	ent.TileIndex = int(tileIdx)
 
 	if err := binary.Read(r, binary.LittleEndian, &x); err != nil {
-		return &ent, err
+		return &ent, fmt.Errorf("%w while reading x", err)
 	}
 	ent.X = int(x)
 
 	if err := binary.Read(r, binary.LittleEndian, &y); err != nil {
-		return &ent, err
+		return &ent, fmt.Errorf("%w while reading y", err)
 	}
 	ent.Y = int(y)
 
 	if err := binary.Read(r, binary.LittleEndian, &sizeAndFlip); err != nil {
-		return &ent, err
+		return &ent, fmt.Errorf("%w while reading size and flip", err)
 	}
 	ent.Flip = Flip(sizeAndFlip >> 4)
 
 	if err := binary.Read(r, binary.LittleEndian, &poAndSm); err != nil {
-		return &ent, err
+		return &ent, fmt.Errorf("%w while reading palette offset and size modifier", err)
 	}
 	ent.PaletteOffset = int(poAndSm >> 4)
 
@@ -171,34 +173,34 @@ func ReadFrame(r io.ReadSeeker, offset int64) (Frame, error) {
 
 	var tilesPtr uint32
 	if err := binary.Read(r, binary.LittleEndian, &tilesPtr); err != nil {
-		return fr, err
+		return fr, fmt.Errorf("%w while reading tiles pointer", err)
 	}
 
 	var palPtr uint32
 	if err := binary.Read(r, binary.LittleEndian, &palPtr); err != nil {
-		return fr, err
+		return fr, fmt.Errorf("%w while reading palette pointer", err)
 	}
 
 	if _, err := io.CopyN(io.Discard, r, 4); err != nil {
-		return fr, err
+		return fr, fmt.Errorf("%w while reading junk pointer", err)
 	}
 
 	var oamPtrPtr uint32
 	if err := binary.Read(r, binary.LittleEndian, &oamPtrPtr); err != nil {
-		return fr, err
+		return fr, fmt.Errorf("%w while reading OAM pointer pointer", err)
 	}
 
 	if err := binary.Read(r, binary.LittleEndian, &fr.Delay); err != nil {
-		return fr, err
+		return fr, fmt.Errorf("%w while reading delay", err)
 	}
 
 	if err := binary.Read(r, binary.LittleEndian, &fr.Action); err != nil {
-		return fr, err
+		return fr, fmt.Errorf("%w while reading action", err)
 	}
 
 	retOffset, err := r.Seek(0, os.SEEK_CUR)
 	if err != nil {
-		return fr, err
+		return fr, fmt.Errorf("%w while remembering offset", err)
 	}
 	defer func() {
 		r.Seek(retOffset, os.SEEK_SET)
@@ -206,12 +208,12 @@ func ReadFrame(r io.ReadSeeker, offset int64) (Frame, error) {
 
 	// Decode tiles.
 	if _, err := r.Seek(offset+4+int64(tilesPtr), os.SEEK_SET); err != nil {
-		return fr, err
+		return fr, fmt.Errorf("%w while seeking to tiles at tile pointer 0x%08x", err, tilesPtr)
 	}
 
 	var tilesByteSize uint32
 	if err := binary.Read(r, binary.LittleEndian, &tilesByteSize); err != nil {
-		return fr, err
+		return fr, fmt.Errorf("%w reading tiles at tile pointer 0x%08x", err, tilesPtr)
 	}
 
 	numTiles := tilesByteSize / (8 * 8 / 2)
@@ -221,18 +223,18 @@ func ReadFrame(r io.ReadSeeker, offset int64) (Frame, error) {
 		var err error
 		fr.Tiles[i], err = ReadTile(r)
 		if err != nil {
-			return fr, err
+			return fr, fmt.Errorf("%w while reading tile %d at pointer 0x%08x", err, i, tilesPtr)
 		}
 	}
 
 	// Decode palette.
 	if _, err := r.Seek(offset+4+int64(palPtr), os.SEEK_SET); err != nil {
-		return fr, err
+		return fr, fmt.Errorf("%w while seeking to palette at palette pointer 0x%08x", err, palPtr)
 	}
 
 	var paletteByteSize uint32
 	if err := binary.Read(r, binary.LittleEndian, &paletteByteSize); err != nil {
-		return fr, err
+		return fr, fmt.Errorf("%w while reading palette header at palette pointer 0x%08x", err, palPtr)
 	}
 
 	// TODO: Something useful with paletteByteSize?
@@ -243,7 +245,7 @@ func ReadFrame(r io.ReadSeeker, offset int64) (Frame, error) {
 			if errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, io.EOF) {
 				break
 			}
-			return fr, err
+			return fr, fmt.Errorf("%w while reading palbank %d at palette pointer 0x%08x", err, i, palPtr)
 		}
 
 		if binary.LittleEndian.Uint32(raw[:4]) == 4 {
@@ -252,7 +254,7 @@ func ReadFrame(r io.ReadSeeker, offset int64) (Frame, error) {
 
 		palette, err := ReadPalette(bytes.NewBuffer(raw[:]))
 		if err != nil {
-			return fr, err
+			return fr, fmt.Errorf("%w while reading palbank %d at palette pointer 0x%08x", err, i, palPtr)
 		}
 
 		// Palette entry 0 is always transparent.
@@ -262,22 +264,22 @@ func ReadFrame(r io.ReadSeeker, offset int64) (Frame, error) {
 
 	// Decode OAM entries.
 	if _, err := r.Seek(offset+4+int64(oamPtrPtr), os.SEEK_SET); err != nil {
-		return fr, err
+		return fr, fmt.Errorf("%w while seeking to OAM pointer at OAM pointer pointer 0x%08x", err, oamPtrPtr)
 	}
 
 	var oamPtr uint32
 	if err := binary.Read(r, binary.LittleEndian, &oamPtr); err != nil {
-		return fr, err
+		return fr, fmt.Errorf("%w while reading OAM pointer at OAM pointer pointer 0x%08x", err, oamPtrPtr)
 	}
 
 	if _, err := r.Seek(offset+4+int64(oamPtrPtr+oamPtr), os.SEEK_SET); err != nil {
-		return fr, err
+		return fr, fmt.Errorf("%w while reading OAM at OAM pointer 0x%08x", err, oamPtr)
 	}
 
-	for {
+	for i := 0; ; i++ {
 		oamEntry, err := ReadOAMEntry(r)
 		if err != nil {
-			return fr, nil
+			return fr, fmt.Errorf("%w while reading OAM entry %d at OAM pointer 0x%08x", err, i, oamPtr)
 		}
 
 		if oamEntry == nil {
@@ -372,25 +374,25 @@ func ReadAnimation(r io.ReadSeeker, offset int64) (Animation, error) {
 
 	var animPtr uint32
 	if err := binary.Read(r, binary.LittleEndian, &animPtr); err != nil {
-		return anim, err
+		return anim, fmt.Errorf("%w while reading animation pointer", err)
 	}
 
 	retOffset, err := r.Seek(0, os.SEEK_CUR)
 	if err != nil {
-		return anim, err
+		return anim, fmt.Errorf("%w while remembering offset", err)
 	}
 	defer func() {
 		r.Seek(retOffset, os.SEEK_SET)
 	}()
 
 	if _, err := r.Seek(offset+4+int64(animPtr), os.SEEK_SET); err != nil {
-		return anim, err
+		return anim, fmt.Errorf("%w while seeking to animation pointer 0x%08x", err, animPtr)
 	}
 
-	for {
+	for i := 0; ; i++ {
 		frame, err := ReadFrame(r, offset)
 		if err != nil {
-			return anim, err
+			return anim, fmt.Errorf("%w while reading frame %d at animation pointer 0x%08x", err, i, animPtr)
 		}
 
 		anim.Frames = append(anim.Frames, frame)
@@ -404,19 +406,19 @@ func ReadAnimation(r io.ReadSeeker, offset int64) (Animation, error) {
 
 func ReadAnimations(r io.ReadSeeker, offset int64) ([]Animation, error) {
 	if _, err := io.CopyN(io.Discard, r, 3); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w while discarding header", err)
 	}
 
 	var n uint8
 	if err := binary.Read(r, binary.LittleEndian, &n); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w while animation count", err)
 	}
 
 	anims := make([]Animation, n)
 	for i := 0; i < len(anims); i++ {
 		anim, err := ReadAnimation(r, offset)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("%w while reading animation %d", err, i)
 		}
 		anims[i] = anim
 	}
@@ -430,48 +432,131 @@ func Read(r io.ReadSeeker, n int) ([][]Animation, error) {
 	for i := 0; i < n; i++ {
 		var animPtr uint32
 		if err := binary.Read(r, binary.LittleEndian, &animPtr); err != nil {
-			return sprites, err
+			return sprites, fmt.Errorf("%w while reading sprite pointer 0x%08x (%d)", err, animPtr, i)
 		}
 
 		retOffset, err := r.Seek(0, os.SEEK_CUR)
 		if err != nil {
-			return sprites, err
+			return sprites, fmt.Errorf("%w while remembering offset for sprite pointer 0x%08x (%d)", err, animPtr, i)
 		}
 
 		animR := r
 
 		isLZ77 := animPtr&0x80000000 == 0x80000000
-		animPtr &= ^uint32(0x88000000)
+		realPtr := animPtr & ^uint32(0x88000000)
 
 		if isLZ77 {
-			if _, err := r.Seek(int64(animPtr), os.SEEK_SET); err != nil {
-				return sprites, err
+			if _, err := r.Seek(int64(realPtr), os.SEEK_SET); err != nil {
+				return sprites, fmt.Errorf("%w while seeking to LZ77 sprite pointer 0x%08x (%d)", err, animPtr, i)
 			}
 
 			buf, err := lz77.Decompress(r)
 			if err != nil {
-				return sprites, err
+				return sprites, fmt.Errorf("%w while decompressing LZ77 sprite pointer 0x%08x (%d)", err, animPtr, i)
 			}
 
 			animR = bytes.NewReader(buf)
-			animPtr = 4
+			realPtr = 4
 		}
 
-		if _, err := animR.Seek(int64(animPtr), os.SEEK_SET); err != nil {
-			return sprites, err
+		if _, err := animR.Seek(int64(realPtr), os.SEEK_SET); err != nil {
+			return sprites, fmt.Errorf("%w while seeking sprite pointer 0x%08x", err, animPtr)
 		}
 
-		anims, err := ReadAnimations(animR, int64(animPtr))
+		anims, err := ReadAnimations(animR, int64(realPtr))
 		if err != nil {
-			return sprites, err
+			return sprites, fmt.Errorf("%w while reading sprite at sprite pointer 0x%08x (%d)", err, animPtr, i)
 		}
 
 		sprites[i] = anims
 
 		if _, err := r.Seek(retOffset, os.SEEK_SET); err != nil {
-			return sprites, err
+			return sprites, fmt.Errorf("%w while returning to offset for sprite pointer 0x%08x (%d)", err, animPtr, i)
 		}
 	}
 
 	return sprites, nil
+}
+
+type ROMInfo struct {
+	ID     string
+	Offset int64
+	Count  int
+}
+
+func ReadROMInfo(r io.ReadSeeker) (*ROMInfo, error) {
+	romID, err := ReadROMID(r)
+	if err != nil {
+		return nil, err
+	}
+
+	switch romID {
+	case "BR6E", "BR6P", "BR5E", "BR5P":
+		return &ROMInfo{romID, 0x00031CEC, 815}, nil
+	case "BR6J", "BR5J":
+		return &ROMInfo{romID, 0x00032CA8, 815}, nil
+	case "BRBE":
+		return &ROMInfo{romID, 0x00032750, 664}, nil
+	case "BRKE":
+		return &ROMInfo{romID, 0x00032754, 664}, nil
+	case "BRBJ":
+		return &ROMInfo{romID, 0x000326e8, 664}, nil
+	case "BRKJ":
+		return &ROMInfo{romID, 0x000326ec, 664}, nil
+	case "BR4J":
+		return &ROMInfo{romID, 0x0002b39c, 568}, nil
+	case "B4BE":
+		return &ROMInfo{romID, 0x00027968, 616}, nil
+	case "B4WE":
+		return &ROMInfo{romID, 0x00027964, 616}, nil
+	case "B4BJ":
+		return &ROMInfo{romID, 0x00027880, 616}, nil
+	case "B4WJ":
+		return &ROMInfo{romID, 0x0002787c, 616}, nil
+	case "A6BE":
+		return &ROMInfo{romID, 0x000247a0, 821}, nil
+	case "A3XE":
+		return &ROMInfo{romID, 0x00024788, 821}, nil
+	case "A6BJ":
+		return &ROMInfo{romID, 0x000248f8, 565}, nil
+	case "A3XJ":
+		return &ROMInfo{romID, 0x000248e0, 564}, nil
+	case "AE2E":
+		return &ROMInfo{romID, 0x0001e9fc, 501}, nil
+	case "AE2J":
+		return &ROMInfo{romID, 0x0001e888, 501}, nil
+	case "AREE":
+		return &ROMInfo{romID, 0x00012690, 344}, nil
+	case "AREP":
+		return &ROMInfo{romID, 0x0001269c, 344}, nil
+	case "AREJ":
+		return &ROMInfo{romID, 0x00012614, 344}, nil
+	}
+	return nil, nil
+}
+
+func ReadROMID(r io.ReadSeeker) (string, error) {
+	var romID [4]byte
+	if _, err := r.Seek(0x000000AC, os.SEEK_SET); err != nil {
+		return "", err
+	}
+
+	if _, err := io.ReadFull(r, romID[:]); err != nil {
+		return "", err
+	}
+
+	return string(romID[:]), nil
+}
+
+func ReadROMTitle(r io.ReadSeeker) (string, error) {
+	var romTitle [12]byte
+	if _, err := r.Seek(0x000000A0, os.SEEK_SET); err != nil {
+		return "", err
+	}
+
+	if _, err := io.ReadFull(r, romTitle[:]); err != nil {
+		return "", err
+	}
+
+	return strings.TrimRight(string(romTitle[:]), "\x00"), nil
 }
