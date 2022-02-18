@@ -118,48 +118,6 @@ func ReadOAMEntry(r io.Reader) (*OAMEntry, error) {
 	return &ent, nil
 }
 
-func GuessIsPalbank(raw []byte) bool {
-	if len(raw) != 0x20 {
-		return false
-	}
-
-	ptr := binary.LittleEndian.Uint32(raw[:4])
-	raw = raw[4:]
-
-	if ptr == 0x80010004 {
-		return false
-	}
-
-	if ptr%4 != 0 {
-		return true
-	}
-
-	if ptr == 0 {
-		return true
-	}
-
-	for i := 0; i < int(ptr/4); i++ {
-		if len(raw) == 0 {
-			return true
-		}
-
-		nextPtr := binary.LittleEndian.Uint32(raw[:4])
-		raw = raw[4:]
-
-		if nextPtr%4 != 0 {
-			return true
-		}
-
-		if nextPtr < ptr {
-			return true
-		}
-
-		ptr = nextPtr
-	}
-
-	return false
-}
-
 type FrameAction uint16
 
 const (
@@ -169,10 +127,11 @@ const (
 )
 
 type Frame struct {
-	Image   *image.Paletted
-	Palette color.Palette
-	Delay   uint16
-	Action  FrameAction
+	Palette    color.Palette
+	Delay      uint16
+	Action     FrameAction
+	Tiles      []*image.Paletted
+	OAMEntries []OAMEntry
 }
 
 func ReadTile(r io.Reader) (*image.Paletted, error) {
@@ -257,10 +216,10 @@ func ReadFrame(r io.ReadSeeker, offset int64) (Frame, error) {
 
 	numTiles := tilesByteSize / (8 * 8 / 2)
 
-	tiles := make([]*image.Paletted, numTiles)
+	fr.Tiles = make([]*image.Paletted, numTiles)
 	for i := 0; i < int(numTiles); i++ {
 		var err error
-		tiles[i], err = ReadTile(r)
+		fr.Tiles[i], err = ReadTile(r)
 		if err != nil {
 			return fr, err
 		}
@@ -275,8 +234,10 @@ func ReadFrame(r io.ReadSeeker, offset int64) (Frame, error) {
 	if err := binary.Read(r, binary.LittleEndian, &paletteByteSize); err != nil {
 		return fr, err
 	}
+
 	// TODO: Something useful with paletteByteSize?
-	for {
+	// TODO: Surely nothing has more than 64 palettes?
+	for i := 0; i < 64; i++ {
 		var raw [16 * 2]byte
 		if _, err := io.ReadFull(r, raw[:]); err != nil {
 			if errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, io.EOF) {
@@ -285,14 +246,15 @@ func ReadFrame(r io.ReadSeeker, offset int64) (Frame, error) {
 			return fr, err
 		}
 
-		if !GuessIsPalbank(raw[:]) {
+		if binary.LittleEndian.Uint32(raw[:4]) == 4 {
 			break
 		}
 
-		palette, err := ReadPalette(bytes.NewReader(raw[:]))
+		palette, err := ReadPalette(bytes.NewBuffer(raw[:]))
 		if err != nil {
 			return fr, err
 		}
+
 		// Palette entry 0 is always transparent.
 		palette[0] = color.RGBA{}
 		fr.Palette = append(fr.Palette, palette...)
@@ -312,12 +274,6 @@ func ReadFrame(r io.ReadSeeker, offset int64) (Frame, error) {
 		return fr, err
 	}
 
-	palSize := 256
-	if len(fr.Palette) < palSize {
-		palSize = len(fr.Palette)
-	}
-
-	fr.Image = image.NewPaletted(image.Rect(0, 0, 512, 512), fr.Palette[:palSize])
 	for {
 		oamEntry, err := ReadOAMEntry(r)
 		if err != nil {
@@ -328,11 +284,26 @@ func ReadFrame(r io.ReadSeeker, offset int64) (Frame, error) {
 			break
 		}
 
-		oamImg := image.NewPaletted(image.Rect(0, 0, oamEntry.WTiles*8, oamEntry.HTiles*8), fr.Image.Palette)
+		fr.OAMEntries = append(fr.OAMEntries, *oamEntry)
+	}
+
+	return fr, nil
+}
+
+func (f *Frame) MakeImage() *image.Paletted {
+	palSize := 256
+	if len(f.Palette) < palSize {
+		palSize = len(f.Palette)
+	}
+
+	img := image.NewPaletted(image.Rect(0, 0, 512, 512), f.Palette[:palSize])
+
+	for _, oamEntry := range f.OAMEntries {
+		oamImg := image.NewPaletted(image.Rect(0, 0, oamEntry.WTiles*8, oamEntry.HTiles*8), img.Palette)
 
 		for j := 0; j < oamEntry.HTiles; j++ {
 			for i := 0; i < oamEntry.WTiles; i++ {
-				tile := tiles[oamEntry.TileIndex+j*oamEntry.WTiles+i]
+				tile := f.Tiles[oamEntry.TileIndex+j*oamEntry.WTiles+i]
 				mask := image.NewAlpha(tile.Rect)
 				for k := 0; k < len(tile.Pix); k++ {
 					a := uint8(0)
@@ -342,7 +313,7 @@ func ReadFrame(r io.ReadSeeker, offset int64) (Frame, error) {
 					mask.Pix[k] = a
 				}
 
-				tileCopy := image.NewPaletted(image.Rect(0, 0, 8, 8), fr.Image.Palette)
+				tileCopy := image.NewPaletted(image.Rect(0, 0, 8, 8), img.Palette)
 				for k := 0; k < len(tile.Pix); k++ {
 					tileCopy.Pix[k] = tile.Pix[k] + uint8(16*oamEntry.PaletteOffset)
 				}
@@ -381,15 +352,15 @@ func ReadFrame(r io.ReadSeeker, offset int64) (Frame, error) {
 			mask.Pix[k] = a
 		}
 
-		draw.DrawMask(fr.Image, image.Rect(
-			oamEntry.X+fr.Image.Rect.Dx()/2,
-			oamEntry.Y+fr.Image.Rect.Dy()/2,
-			oamEntry.X+fr.Image.Rect.Dx()/2+oamImg.Rect.Dx(),
-			oamEntry.Y+fr.Image.Rect.Dy()/2+oamImg.Rect.Dy(),
+		draw.DrawMask(img, image.Rect(
+			oamEntry.X+img.Rect.Dx()/2,
+			oamEntry.Y+img.Rect.Dy()/2,
+			oamEntry.X+img.Rect.Dx()/2+oamImg.Rect.Dx(),
+			oamEntry.Y+img.Rect.Dy()/2+oamImg.Rect.Dy(),
 		), oamImg, image.Point{}, mask, image.Point{}, draw.Over)
 	}
 
-	return fr, nil
+	return img
 }
 
 type Animation struct {
