@@ -279,7 +279,7 @@ func ReadFrame(r io.ReadSeeker, offset int64) (Frame, error) {
 	for {
 		var raw [16 * 2]byte
 		if _, err := io.ReadFull(r, raw[:]); err != nil {
-			if errors.Is(err, io.ErrUnexpectedEOF) {
+			if errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, io.EOF) {
 				break
 			}
 			return fr, err
@@ -312,7 +312,12 @@ func ReadFrame(r io.ReadSeeker, offset int64) (Frame, error) {
 		return fr, err
 	}
 
-	fr.Image = image.NewPaletted(image.Rect(0, 0, 512, 512), fr.Palette[:256])
+	palSize := 256
+	if len(fr.Palette) < palSize {
+		palSize = len(fr.Palette)
+	}
+
+	fr.Image = image.NewPaletted(image.Rect(0, 0, 512, 512), fr.Palette[:palSize])
 	for {
 		oamEntry, err := ReadOAMEntry(r)
 		if err != nil {
@@ -462,7 +467,7 @@ func Read(r io.ReadSeeker, n int) ([][]Animation, error) {
 			return sprites, err
 		}
 
-		animF := r
+		animR := r
 
 		isLZ77 := animPtr&0x80000000 == 0x80000000
 		animPtr &= ^uint32(0x88000000)
@@ -477,15 +482,15 @@ func Read(r io.ReadSeeker, n int) ([][]Animation, error) {
 				return sprites, err
 			}
 
-			animF = bytes.NewReader(buf)
+			animR = bytes.NewReader(buf)
 			animPtr = 4
 		}
 
-		if _, err := r.Seek(int64(animPtr), os.SEEK_SET); err != nil {
+		if _, err := animR.Seek(int64(animPtr), os.SEEK_SET); err != nil {
 			return sprites, err
 		}
 
-		anims, err := ReadAnimations(animF, int64(animPtr))
+		anims, err := ReadAnimations(animR, int64(animPtr))
 		if err != nil {
 			return sprites, err
 		}
