@@ -131,6 +131,10 @@ func processOne(idx int, anims []sprites.Animation) error {
 		}
 	}
 
+	if spriteImg.Palette == nil {
+		return nil
+	}
+
 	subimg := spriteImg.SubImage(FindBbox(spriteImg))
 	if subimg.Bounds().Dx() == 0 || subimg.Bounds().Dy() == 0 {
 		return nil
@@ -286,8 +290,8 @@ func main() {
 		bar1.Describe(fmt.Sprintf("decode: %04d", i))
 		anims, err := sprites.ReadNext(r)
 		if err != nil {
-			log.Printf("error, breaking: %s", err)
-			break
+			log.Printf("error reading %04d: %s", i, err)
+			continue
 		}
 		s = append(s, anims)
 	}
