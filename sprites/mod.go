@@ -7,11 +7,11 @@ import (
 	"fmt"
 	"image"
 	"image/color"
-	"image/draw"
 	"io"
 	"os"
 	"strings"
 
+	"github.com/nbarena/bnrom/paletted"
 	"github.com/nbarena/gbarom/bgr555"
 	"github.com/nbarena/gbarom/lz77"
 )
@@ -306,43 +306,20 @@ func (f *Frame) MakeImage() *image.Paletted {
 		for j := 0; j < oamEntry.HTiles; j++ {
 			for i := 0; i < oamEntry.WTiles; i++ {
 				tile := f.Tiles[oamEntry.TileIndex+j*oamEntry.WTiles+i]
-				mask := image.NewAlpha(tile.Rect)
-				for k := 0; k < len(tile.Pix); k++ {
-					a := uint8(0)
-					if tile.Pix[k] != 0 {
-						a = 0xFF
-					}
-					mask.Pix[k] = a
-				}
-
-				tileCopy := image.NewPaletted(image.Rect(0, 0, 8, 8), img.Palette)
+				tileCopy := image.NewPaletted(image.Rect(0, 0, 8, 8), nil)
 				for k := 0; k < len(tile.Pix); k++ {
 					tileCopy.Pix[k] = tile.Pix[k] + uint8(16*oamEntry.PaletteOffset)
 				}
-				draw.DrawMask(oamImg, image.Rect(i*8, j*8, (i+1)*8, (j+1)*8), tileCopy, image.Point{}, mask, image.Point{}, draw.Over)
+				paletted.DrawOver(oamImg, image.Rect(i*8, j*8, (i+1)*8, (j+1)*8), tileCopy, image.Point{})
 			}
 		}
 
-		ow := oamImg.Rect.Dx()
-		oh := oamImg.Rect.Dy()
-
 		if oamEntry.Flip&FlipH != 0 {
-			// Horizontal flips suck!
-			for j := 0; j < oh; j++ {
-				for i := 0; i < ow/2; i++ {
-					oamImg.Pix[j*ow+i], oamImg.Pix[j*ow+(ow-1-i)] = oamImg.Pix[j*ow+(ow-1-i)], oamImg.Pix[j*ow+i]
-				}
-			}
+			paletted.FlipHorizontal(oamImg)
 		}
 
 		if oamEntry.Flip&FlipV != 0 {
-			// Vertical flips rule!
-			for j := 0; j < oh/2; j++ {
-				upper := make([]uint8, ow)
-				copy(upper, oamImg.Pix[j*ow:(j+1)*ow])
-				copy(oamImg.Pix[j*ow:(j+1)*ow], oamImg.Pix[(oh-j-1)*ow:(oh-j-1+1)*ow])
-				copy(oamImg.Pix[(oh-j-1)*ow:(oh-j-1+1)*ow], upper)
-			}
+			paletted.FlipVertical(oamImg)
 		}
 
 		mask := image.NewAlpha(oamImg.Rect)
@@ -354,12 +331,12 @@ func (f *Frame) MakeImage() *image.Paletted {
 			mask.Pix[k] = a
 		}
 
-		draw.DrawMask(img, image.Rect(
+		paletted.DrawSimpleMaskOver(img, image.Rect(
 			oamEntry.X+img.Rect.Dx()/2,
 			oamEntry.Y+img.Rect.Dy()/2,
 			oamEntry.X+img.Rect.Dx()/2+oamImg.Rect.Dx(),
 			oamEntry.Y+img.Rect.Dy()/2+oamImg.Rect.Dy(),
-		), oamImg, image.Point{}, mask, image.Point{}, draw.Over)
+		), oamImg, image.Point{}, mask, image.Point{})
 	}
 
 	return img
