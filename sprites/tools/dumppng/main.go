@@ -210,7 +210,16 @@ func processOne(idx int, anims []sprites.Animation) error {
 					binary.Write(&buf, binary.LittleEndian, int16(info.Origin.X))
 					binary.Write(&buf, binary.LittleEndian, int16(info.Origin.Y))
 					buf.WriteByte(uint8(info.Delay))
-					buf.WriteByte(uint8(info.Action))
+					var action uint8
+					switch info.Action {
+					case sprites.FrameActionNext:
+						action = 0
+					case sprites.FrameActionLoop:
+						action = 1
+					case sprites.FrameActionStop:
+						action = 2
+					}
+					buf.WriteByte(action)
 				}
 				if err := pngw.WriteChunk(int32(buf.Len()), "zTXt", bytes.NewBuffer(buf.Bytes())); err != nil {
 					return err
