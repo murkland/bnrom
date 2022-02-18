@@ -45,8 +45,8 @@ func FlipVertical(img *image.Paletted) {
 		y1 := img.Rect.Min.Y + h - j - 1
 
 		upper := make([]uint8, w)
-		copy(upper, img.Pix[j*w:(y0+1)*w])
-		copy(img.Pix[y0*w:(y0+1)*w], img.Pix[y1*w:(y1+1)*w])
-		copy(img.Pix[y1*w:(y1+1)*w], upper)
+		copy(upper, img.Pix[y0*img.Rect.Max.X:y0*img.Rect.Max.X+w])
+		copy(img.Pix[y0*img.Rect.Max.X:y0*img.Rect.Max.X+w], img.Pix[y1*img.Rect.Max.X:y1*img.Rect.Max.X+w])
+		copy(img.Pix[y1*img.Rect.Max.X:y1*img.Rect.Max.X+w], upper)
 	}
 }
