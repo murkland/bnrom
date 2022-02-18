@@ -27,11 +27,10 @@ func FlipHorizontal(img *image.Paletted) {
 	h := img.Rect.Dy()
 
 	for j := 0; j < h; j++ {
+		y := img.Rect.Min.Y + j
 		for i := 0; i < w/2; i++ {
 			x0 := img.Rect.Min.X + i
 			x1 := img.Rect.Min.X + w - i - 1
-			y := img.Rect.Min.Y + j
-
 			img.Pix[y*img.Rect.Max.X+x0], img.Pix[y*img.Rect.Max.X+x1] = img.Pix[y*img.Rect.Max.X+x1], img.Pix[y*img.Rect.Max.X+x0]
 		}
 	}
