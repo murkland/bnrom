@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"flag"
 	"fmt"
 	"image"
 	"image/color"
@@ -97,7 +98,7 @@ func processOne(idx int, anims []sprites.Animation) error {
 
 	var infos []FrameInfo
 	var fullPalette color.Palette
-	spriteImg := image.NewPaletted(image.Rect(0, 0, 1024, 1024), nil)
+	spriteImg := image.NewPaletted(image.Rect(0, 0, 2048, 2048), nil)
 
 	for _, anim := range anims {
 		for _, frame := range anim.Frames {
@@ -231,7 +232,9 @@ func processOne(idx int, anims []sprites.Animation) error {
 }
 
 func main() {
-	f, err := os.Open("BN6 Gregar.gba")
+	flag.Parse()
+
+	f, err := os.Open(flag.Arg(0))
 	if err != nil {
 		log.Fatalf("%s", err)
 	}
