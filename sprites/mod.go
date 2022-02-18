@@ -363,7 +363,7 @@ func ReadFrame(r io.ReadSeeker, offset int64) (Frame, error) {
 		}
 
 		if oamEntry.Flip&FlipV != 0 {
-			// Vertical flips are cheap!
+			// Vertical flips rule!
 			for j := 0; j < oh/2; j++ {
 				upper := make([]uint8, ow)
 				copy(upper, oamImg.Pix[j*ow:(j+1)*ow])
