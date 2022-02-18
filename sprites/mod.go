@@ -426,56 +426,50 @@ func ReadAnimations(r io.ReadSeeker, offset int64) ([]Animation, error) {
 	return anims, nil
 }
 
-func Read(r io.ReadSeeker, n int) ([][]Animation, error) {
-	sprites := make([][]Animation, n)
-
-	for i := 0; i < n; i++ {
-		var animPtr uint32
-		if err := binary.Read(r, binary.LittleEndian, &animPtr); err != nil {
-			return sprites, fmt.Errorf("%w while reading sprite pointer 0x%08x (%d)", err, animPtr, i)
-		}
-
-		retOffset, err := r.Seek(0, os.SEEK_CUR)
-		if err != nil {
-			return sprites, fmt.Errorf("%w while remembering offset for sprite pointer 0x%08x (%d)", err, animPtr, i)
-		}
-
-		animR := r
-
-		isLZ77 := animPtr&0x80000000 == 0x80000000
-		realPtr := animPtr & ^uint32(0x88000000)
-
-		if isLZ77 {
-			if _, err := r.Seek(int64(realPtr), os.SEEK_SET); err != nil {
-				return sprites, fmt.Errorf("%w while seeking to LZ77 sprite pointer 0x%08x (%d)", err, animPtr, i)
-			}
-
-			buf, err := lz77.Decompress(r)
-			if err != nil {
-				return sprites, fmt.Errorf("%w while decompressing LZ77 sprite pointer 0x%08x (%d)", err, animPtr, i)
-			}
-
-			animR = bytes.NewReader(buf)
-			realPtr = 4
-		}
-
-		if _, err := animR.Seek(int64(realPtr), os.SEEK_SET); err != nil {
-			return sprites, fmt.Errorf("%w while seeking sprite pointer 0x%08x", err, animPtr)
-		}
-
-		anims, err := ReadAnimations(animR, int64(realPtr))
-		if err != nil {
-			return sprites, fmt.Errorf("%w while reading sprite at sprite pointer 0x%08x (%d)", err, animPtr, i)
-		}
-
-		sprites[i] = anims
-
-		if _, err := r.Seek(retOffset, os.SEEK_SET); err != nil {
-			return sprites, fmt.Errorf("%w while returning to offset for sprite pointer 0x%08x (%d)", err, animPtr, i)
-		}
+func ReadNext(r io.ReadSeeker) ([]Animation, error) {
+	var animPtr uint32
+	if err := binary.Read(r, binary.LittleEndian, &animPtr); err != nil {
+		return nil, fmt.Errorf("%w while reading sprite pointer 0x%08x", err, animPtr)
 	}
 
-	return sprites, nil
+	retOffset, err := r.Seek(0, os.SEEK_CUR)
+	if err != nil {
+		return nil, fmt.Errorf("%w while remembering offset for sprite pointer 0x%08x", err, animPtr)
+	}
+
+	defer func() {
+		r.Seek(retOffset, os.SEEK_SET)
+	}()
+
+	animR := r
+
+	isLZ77 := animPtr&0x80000000 == 0x80000000
+	realPtr := animPtr & ^uint32(0x88000000)
+
+	if isLZ77 {
+		if _, err := r.Seek(int64(realPtr), os.SEEK_SET); err != nil {
+			return nil, fmt.Errorf("%w while seeking to LZ77 sprite pointer 0x%08x", err, animPtr)
+		}
+
+		buf, err := lz77.Decompress(r)
+		if err != nil {
+			return nil, fmt.Errorf("%w while decompressing LZ77 sprite pointer 0x%08x", err, animPtr)
+		}
+
+		animR = bytes.NewReader(buf)
+		realPtr = 4
+	}
+
+	if _, err := animR.Seek(int64(realPtr), os.SEEK_SET); err != nil {
+		return nil, fmt.Errorf("%w while seeking sprite pointer 0x%08x", err, animPtr)
+	}
+
+	anims, err := ReadAnimations(animR, int64(realPtr))
+	if err != nil {
+		return nil, fmt.Errorf("%w while reading sprite at sprite pointer 0x%08x", err, animPtr)
+	}
+
+	return anims, nil
 }
 
 type ROMInfo struct {

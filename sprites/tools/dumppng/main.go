@@ -276,14 +276,26 @@ func main() {
 	if _, err := r.Seek(romInfo.Offset, os.SEEK_SET); err != nil {
 		log.Fatalf("%s", err)
 	}
-	s, err := sprites.Read(r, romInfo.Count)
-	if err != nil {
-		log.Fatalf("%s", err)
+
+	s := make([][]sprites.Animation, 0, romInfo.Count)
+
+	bar1 := progressbar.Default(int64(romInfo.Count))
+	bar1.Describe("decode")
+	for i := 0; i < romInfo.Count; i++ {
+		bar1.Add(1)
+		bar1.Describe(fmt.Sprintf("decode: %04d", i))
+		anims, err := sprites.ReadNext(r)
+		if err != nil {
+			log.Printf("error, breaking: %s", err)
+			break
+		}
+		s = append(s, anims)
 	}
 
 	os.Mkdir("sprites", 0o700)
 
-	bar := progressbar.Default(int64(len(s)))
+	bar2 := progressbar.Default(int64(len(s)))
+	bar2.Describe("dump")
 	type work struct {
 		idx   int
 		anims []sprites.Animation
@@ -295,7 +307,8 @@ func main() {
 	for i := 0; i < runtime.NumCPU(); i++ {
 		g.Go(func() error {
 			for w := range ch {
-				bar.Add(1)
+				bar2.Add(1)
+				bar2.Describe(fmt.Sprintf("dump: %04d", w.idx))
 				if err := processOne(w.idx, w.anims); err != nil {
 					return err
 				}
