@@ -308,7 +308,11 @@ func (f *Frame) MakeImage() *image.Paletted {
 				tile := f.Tiles[oamEntry.TileIndex+j*oamEntry.WTiles+i]
 				tileCopy := image.NewPaletted(image.Rect(0, 0, 8, 8), nil)
 				for k := 0; k < len(tile.Pix); k++ {
-					tileCopy.Pix[k] = tile.Pix[k] + uint8(16*oamEntry.PaletteOffset)
+					if tile.Pix[k] != 0 {
+						tileCopy.Pix[k] = tile.Pix[k] + uint8(16*oamEntry.PaletteOffset)
+					} else {
+						tileCopy.Pix[k] = 0
+					}
 				}
 				paletted.DrawOver(oamImg, image.Rect(i*8, j*8, (i+1)*8, (j+1)*8), tileCopy, image.Point{})
 			}
@@ -322,21 +326,12 @@ func (f *Frame) MakeImage() *image.Paletted {
 			paletted.FlipVertical(oamImg)
 		}
 
-		mask := image.NewAlpha(oamImg.Rect)
-		for k := 0; k < len(oamImg.Pix); k++ {
-			a := uint8(0)
-			if oamImg.Pix[k] != 0 {
-				a = 0xFF
-			}
-			mask.Pix[k] = a
-		}
-
-		paletted.DrawSimpleMaskOver(img, image.Rect(
+		paletted.DrawOver(img, image.Rect(
 			oamEntry.X+img.Rect.Dx()/2,
 			oamEntry.Y+img.Rect.Dy()/2,
 			oamEntry.X+img.Rect.Dx()/2+oamImg.Rect.Dx(),
 			oamEntry.Y+img.Rect.Dy()/2+oamImg.Rect.Dy(),
-		), oamImg, image.Point{}, mask, image.Point{})
+		), oamImg, image.Point{})
 	}
 
 	return img

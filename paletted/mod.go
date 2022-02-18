@@ -4,12 +4,7 @@ import (
 	"image"
 )
 
-func DrawSimpleMaskOver(dst *image.Paletted, r image.Rectangle, src *image.Paletted, sp image.Point, mask *image.Alpha, mp image.Point) {
-	var mw int
-	if mask != nil {
-		mw = mask.Rect.Dx()
-	}
-
+func DrawOver(dst *image.Paletted, r image.Rectangle, src *image.Paletted, sp image.Point) {
 	for y := 0; y < r.Dy(); y++ {
 		for x := 0; x < r.Dx(); x++ {
 			sx := src.Rect.Min.X + sp.X + x
@@ -18,22 +13,13 @@ func DrawSimpleMaskOver(dst *image.Paletted, r image.Rectangle, src *image.Palet
 			dx := dst.Rect.Min.X + r.Min.X + x
 			dy := dst.Rect.Min.Y + r.Min.Y + y
 
-			if mask != nil {
-				mx := mask.Rect.Min.X + mp.X + x
-				my := mask.Rect.Min.Y + mp.X + y
-				if mask.Pix[my*mw+mx] == 0 {
-					continue
-				}
-			}
-
 			srcPixel := src.Pix[sy*src.Rect.Max.X+sx]
+			if srcPixel == 0 {
+				continue
+			}
 			dst.Pix[dy*dst.Rect.Max.X+dx] = srcPixel
 		}
 	}
-}
-
-func DrawOver(dst *image.Paletted, r image.Rectangle, src *image.Paletted, sp image.Point) {
-	DrawSimpleMaskOver(dst, r, src, sp, nil, image.Point{})
 }
 
 func FlipHorizontal(img *image.Paletted) {
