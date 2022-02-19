@@ -20,9 +20,12 @@ import (
 )
 
 type romInfo struct {
-	Offset int64
-	Count  int
+	Offset        int64
+	Count         int
+	IconPalOffset int64
 }
+
+const h = 0x708344
 
 var falzarGigaPalette = []uint8{0x00, 0x00, 0xDE, 0x7B, 0x74, 0x77, 0xCC, 0x49, 0xEB, 0x44, 0x07, 0x77, 0x43, 0x6E, 0x82, 0x55, 0xC1, 0x40, 0x3E, 0x1B, 0x59, 0x26, 0xB4, 0x09, 0xDD, 0x76, 0x7B, 0x55, 0x39, 0x20, 0x05, 0x18}
 var gregarGigaPalette = []uint8{0x00, 0x00, 0xFF, 0x77, 0x9E, 0x47, 0x3F, 0x1F, 0x7D, 0x0A, 0x77, 0x0D, 0xF4, 0x04, 0x51, 0x00, 0x89, 0x10, 0xA3, 0x18, 0x5F, 0x4D, 0x87, 0x37, 0x90, 0x7F, 0xCC, 0x5A, 0x09, 0x36, 0x26, 0x21}
@@ -31,9 +34,9 @@ var dblBeastPalette = []uint8{0x7F, 0x7D, 0x9F, 0x13, 0x5E, 0x22, 0x1F, 0x0D, 0x
 func findROMInfo(romID string) *romInfo {
 	switch romID {
 	case "BR6E", "BR6P", "BR5E", "BR5P":
-		return &romInfo{0x00021DD4, 410}
+		return &romInfo{0x00021DD4, 410, 0x000270C4}
 	case "BR6J", "BR5J":
-		return &romInfo{0x00022214, 409}
+		return &romInfo{0x00022214, 409, 0x000274D8}
 	}
 	return nil
 }
@@ -93,14 +96,6 @@ func main() {
 
 	log.Printf("Game title: %s", romTitle)
 
-	var ereaderGigaPalette []uint8
-	switch romTitle {
-	case "ROCKEXE6_GXX":
-		ereaderGigaPalette = gregarGigaPalette
-	case "ROCKEXE6_RXX":
-		ereaderGigaPalette = falzarGigaPalette
-	}
-
 	romID, err := gbarom.ReadROMID(f)
 	if err != nil {
 		log.Fatalf("%s", err)
@@ -109,6 +104,37 @@ func main() {
 	info := findROMInfo(romID)
 	if info == nil {
 		log.Fatalf("unknown rom ID: %s", romID)
+	}
+
+	if _, err := f.Seek(int64(info.IconPalOffset), os.SEEK_SET); err != nil {
+		log.Fatalf("%s", err)
+	}
+
+	var iconPalPtr uint32
+	if err := binary.Read(f, binary.LittleEndian, &iconPalPtr); err != nil {
+		log.Fatalf("%s", err)
+	}
+
+	if _, err := f.Seek(int64(iconPalPtr & ^uint32(0x08000000)), os.SEEK_SET); err != nil {
+		log.Fatalf("%s", err)
+	}
+
+	var iconPalette color.Palette
+	for j := 0; j < 16; j++ {
+		var c uint16
+		if err := binary.Read(f, binary.LittleEndian, &c); err != nil {
+			log.Fatalf("%s", err)
+		}
+
+		iconPalette = append(iconPalette, bgr555.ToRGBA(c))
+	}
+
+	var ereaderGigaPalette []uint8
+	switch romTitle {
+	case "ROCKEXE6_GXX":
+		ereaderGigaPalette = gregarGigaPalette
+	case "ROCKEXE6_RXX":
+		ereaderGigaPalette = falzarGigaPalette
 	}
 
 	if _, err := f.Seek(int64(info.Offset), os.SEEK_SET); err != nil {
@@ -137,12 +163,25 @@ func main() {
 		bar2.Add(1)
 		bar2.Describe(fmt.Sprintf("dump: %04d", i))
 
+		if _, err := f.Seek(int64(ci.ChipIconPtr & ^uint32(0x08000000)), os.SEEK_SET); err != nil {
+			log.Fatalf("%s", err)
+		}
+		chipIconImg := image.NewPaletted(image.Rect(0, 0, 2*8, 2*8), iconPalette)
+		for j := 0; j < 2; j++ {
+			for i := 0; i < 2; i++ {
+				tileImg, err := sprites.ReadTile(f)
+				if err != nil {
+					log.Fatalf("%s", err)
+				}
+
+				paletted.DrawOver(chipIconImg, image.Rect(i*8, j*8, (i+1)*8, (j+1)*8), tileImg, image.Point{})
+			}
+		}
+
 		if _, err := f.Seek(int64(ci.ChipImagePtr & ^uint32(0x08000000)), os.SEEK_SET); err != nil {
 			log.Fatalf("%s", err)
 		}
-
-		img := image.NewPaletted(image.Rect(0, 0, 7*8, 6*8), nil)
-
+		chipImg := image.NewPaletted(image.Rect(0, 0, 7*8, 6*8), nil)
 		for j := 0; j < 6; j++ {
 			for i := 0; i < 7; i++ {
 				tileImg, err := sprites.ReadTile(f)
@@ -150,7 +189,7 @@ func main() {
 					log.Fatalf("%s", err)
 				}
 
-				paletted.DrawOver(img, image.Rect(i*8, j*8, (i+1)*8, (j+1)*8), tileImg, image.Point{})
+				paletted.DrawOver(chipImg, image.Rect(i*8, j*8, (i+1)*8, (j+1)*8), tileImg, image.Point{})
 			}
 		}
 
@@ -180,15 +219,28 @@ func main() {
 			palette = append(palette, bgr555.ToRGBA(c))
 		}
 
-		img.Palette = palette
+		chipImg.Palette = palette
 
-		outf, err := os.Create(fmt.Sprintf("chips/%03d.png", i))
-		if err != nil {
-			log.Fatalf("%s", err)
+		{
+			outf, err := os.Create(fmt.Sprintf("chips/%03d.png", i))
+			if err != nil {
+				log.Fatalf("%s", err)
+			}
+
+			if err := png.Encode(outf, chipImg); err != nil {
+				log.Fatalf("%s", err)
+			}
 		}
 
-		if err := png.Encode(outf, img); err != nil {
-			log.Fatalf("%s", err)
+		{
+			outf, err := os.Create(fmt.Sprintf("chips/%03d_icon.png", i))
+			if err != nil {
+				log.Fatalf("%s", err)
+			}
+
+			if err := png.Encode(outf, chipIconImg); err != nil {
+				log.Fatalf("%s", err)
+			}
 		}
 	}
 }
