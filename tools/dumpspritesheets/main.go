@@ -16,9 +16,9 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/undernet/bnrom/sprites"
-	"github.com/undernet/gbarom"
-	"github.com/undernet/pngchunks"
+	"github.com/yumland/bnrom/sprites"
+	"github.com/yumland/gbarom"
+	"github.com/yumland/pngchunks"
 	"github.com/schollz/progressbar/v3"
 	"golang.org/x/sync/errgroup"
 )

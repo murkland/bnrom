@@ -12,10 +12,10 @@ import (
 	"log"
 	"os"
 
-	"github.com/undernet/bnrom/paletted"
-	"github.com/undernet/bnrom/sprites"
-	"github.com/undernet/gbarom/bgr555"
-	"github.com/undernet/gbarom/lz77"
+	"github.com/yumland/bnrom/paletted"
+	"github.com/yumland/bnrom/sprites"
+	"github.com/yumland/gbarom/bgr555"
+	"github.com/yumland/gbarom/lz77"
 )
 
 const paletteOffsetPtr = 0x0000C16C

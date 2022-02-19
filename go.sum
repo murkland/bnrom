@@ -16,10 +16,10 @@ github.com/schollz/progressbar/v3 v3.8.6/go.mod h1:W5IEwbJecncFGBvuEh4A7HT1nZZ6W
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/testify v1.3.0 h1:TivCn/peBQ7UY8ooIcPgZFpTNSz0Q2U6UrFlUfqbe0Q=
 github.com/stretchr/testify v1.3.0/go.mod h1:M5WIy9Dh21IEIfnGCwXGc5bZfKNJtfHm1UVUgZn+9EI=
-github.com/undernet/gbarom v0.0.0-20220219082942-61c90e7e3fb7 h1:kt2lomHNCwUeLa/Zd1+lU1NMXTZcsq90LW4sii/UhIk=
-github.com/undernet/gbarom v0.0.0-20220219082942-61c90e7e3fb7/go.mod h1:NXiPu89/BUh8W1vKALKrT/Eur6QR0+jCPIjY1wptado=
-github.com/undernet/pngchunks v0.0.0-20220219082958-a63ba1068814 h1:FTZI9CP1dx2CjyCARRcmqJRV200ifK0nqSW5jz6u3Ss=
-github.com/undernet/pngchunks v0.0.0-20220219082958-a63ba1068814/go.mod h1:crk0GTeUX88SrSDvNndnj8ZQuAqYxw1eySm+ciy11UM=
+github.com/yumland/gbarom v0.0.0-20220219084935-da6cfb7daaf2 h1:MJFUA7T5o6E0vmedN0m86QD7QckiibbLW4XRoo0IMao=
+github.com/yumland/gbarom v0.0.0-20220219084935-da6cfb7daaf2/go.mod h1:cBILv+KKQF/P4HYn2n1ldMREXPtin4b2pzxgpwk2HH8=
+github.com/yumland/pngchunks v0.0.0-20220219084845-29962d363499 h1:y1KJloRWYkATfDAl3opJi1/kzH6dmjNvUpOn51oaQSw=
+github.com/yumland/pngchunks v0.0.0-20220219084845-29962d363499/go.mod h1:U09K8Yc+Ai/d5U2SO0gHBM+5eJ3dy6jBBvsmr8FVr0w=
 golang.org/x/crypto v0.0.0-20220131195533-30dcbda58838/go.mod h1:IxCIyHEi3zRg3s0A5j5BB6A9Jmi73HwBIUl50j+osU4=
 golang.org/x/crypto v0.0.0-20220214200702-86341886e292 h1:f+lwQ+GtmgoY+A2YaQxlSOnDjXcQ7ZRLWOHbC6HtRqE=
 golang.org/x/crypto v0.0.0-20220214200702-86341886e292/go.mod h1:IxCIyHEi3zRg3s0A5j5BB6A9Jmi73HwBIUl50j+osU4=
