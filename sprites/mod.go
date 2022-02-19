@@ -35,45 +35,32 @@ type OAMEntry struct {
 }
 
 func ReadOAMEntry(r io.Reader) (*OAMEntry, error) {
-	var ent OAMEntry
-
-	var tileIdx uint8
-	var x, y int8
-	var sizeAndFlip, poAndSm uint8
-
-	if err := binary.Read(r, binary.LittleEndian, &tileIdx); err != nil {
-		return &ent, fmt.Errorf("%w while reading tile index", err)
+	var rawEnt struct {
+		TileIndex   uint8
+		X           int8
+		Y           int8
+		SizeAndFlip uint8
+		POAndSM     uint8
 	}
 
-	if tileIdx == 0xFF {
+	if err := binary.Read(r, binary.LittleEndian, &rawEnt); err != nil {
+		return nil, fmt.Errorf("%w while reading oam entry", err)
+	}
+
+	if rawEnt.TileIndex == 0xFF {
 		// End of OAM entries.
 		return nil, nil
 	}
 
-	ent.TileIndex = int(tileIdx)
+	var ent OAMEntry
+	ent.TileIndex = int(rawEnt.TileIndex)
+	ent.X = int(rawEnt.X)
+	ent.Y = int(rawEnt.Y)
+	ent.Flip = Flip(rawEnt.SizeAndFlip >> 4)
+	ent.PaletteOffset = int(rawEnt.POAndSM >> 4)
 
-	if err := binary.Read(r, binary.LittleEndian, &x); err != nil {
-		return &ent, fmt.Errorf("%w while reading x", err)
-	}
-	ent.X = int(x)
-
-	if err := binary.Read(r, binary.LittleEndian, &y); err != nil {
-		return &ent, fmt.Errorf("%w while reading y", err)
-	}
-	ent.Y = int(y)
-
-	if err := binary.Read(r, binary.LittleEndian, &sizeAndFlip); err != nil {
-		return &ent, fmt.Errorf("%w while reading size and flip", err)
-	}
-	ent.Flip = Flip(sizeAndFlip >> 4)
-
-	if err := binary.Read(r, binary.LittleEndian, &poAndSm); err != nil {
-		return &ent, fmt.Errorf("%w while reading palette offset and size modifier", err)
-	}
-	ent.PaletteOffset = int(poAndSm >> 4)
-
-	size := sizeAndFlip & 0x0F
-	sizeModifier := poAndSm & 0x0F
+	size := rawEnt.SizeAndFlip & 0x0F
+	sizeModifier := rawEnt.POAndSM & 0x0F
 
 	switch (size << 3) | sizeModifier {
 	case (0 << 3) | 0:
@@ -170,31 +157,17 @@ func ReadPalette(r io.Reader) (color.Palette, error) {
 func ReadFrame(r io.ReadSeeker, offset int64) (Frame, error) {
 	var fr Frame
 
-	var tilesPtr uint32
-	if err := binary.Read(r, binary.LittleEndian, &tilesPtr); err != nil {
-		return fr, fmt.Errorf("%w while reading tiles pointer", err)
+	var rawFr struct {
+		TilesPtr  uint32
+		PalPtr    uint32
+		JunkPtr   uint32
+		OAMPtrPtr uint32
+		Delay     uint16
+		Action    uint16
 	}
 
-	var palPtr uint32
-	if err := binary.Read(r, binary.LittleEndian, &palPtr); err != nil {
-		return fr, fmt.Errorf("%w while reading palette pointer", err)
-	}
-
-	if _, err := io.CopyN(io.Discard, r, 4); err != nil {
-		return fr, fmt.Errorf("%w while reading junk pointer", err)
-	}
-
-	var oamPtrPtr uint32
-	if err := binary.Read(r, binary.LittleEndian, &oamPtrPtr); err != nil {
-		return fr, fmt.Errorf("%w while reading OAM pointer pointer", err)
-	}
-
-	if err := binary.Read(r, binary.LittleEndian, &fr.Delay); err != nil {
-		return fr, fmt.Errorf("%w while reading delay", err)
-	}
-
-	if err := binary.Read(r, binary.LittleEndian, &fr.Action); err != nil {
-		return fr, fmt.Errorf("%w while reading action", err)
+	if err := binary.Read(r, binary.LittleEndian, &rawFr); err != nil {
+		return fr, fmt.Errorf("%w while reading frame", err)
 	}
 
 	retOffset, err := r.Seek(0, os.SEEK_CUR)
@@ -205,14 +178,17 @@ func ReadFrame(r io.ReadSeeker, offset int64) (Frame, error) {
 		r.Seek(retOffset, os.SEEK_SET)
 	}()
 
+	fr.Delay = rawFr.Delay
+	fr.Action = FrameAction(rawFr.Action)
+
 	// Decode tiles.
-	if _, err := r.Seek(offset+4+int64(tilesPtr), os.SEEK_SET); err != nil {
-		return fr, fmt.Errorf("%w while seeking to tiles at tile pointer 0x%08x", err, tilesPtr)
+	if _, err := r.Seek(offset+4+int64(rawFr.TilesPtr), os.SEEK_SET); err != nil {
+		return fr, fmt.Errorf("%w while seeking to tiles at tile pointer 0x%08x", err, rawFr.TilesPtr)
 	}
 
 	var tilesByteSize uint32
 	if err := binary.Read(r, binary.LittleEndian, &tilesByteSize); err != nil {
-		return fr, fmt.Errorf("%w reading tiles at tile pointer 0x%08x", err, tilesPtr)
+		return fr, fmt.Errorf("%w reading tiles at tile pointer 0x%08x", err, rawFr.TilesPtr)
 	}
 
 	numTiles := tilesByteSize / (8 * 8 / 2)
@@ -222,18 +198,18 @@ func ReadFrame(r io.ReadSeeker, offset int64) (Frame, error) {
 		var err error
 		fr.Tiles[i], err = ReadTile(r)
 		if err != nil {
-			return fr, fmt.Errorf("%w while reading tile %d at pointer 0x%08x", err, i, tilesPtr)
+			return fr, fmt.Errorf("%w while reading tile %d at pointer 0x%08x", err, i, rawFr.TilesPtr)
 		}
 	}
 
 	// Decode palette.
-	if _, err := r.Seek(offset+4+int64(palPtr), os.SEEK_SET); err != nil {
-		return fr, fmt.Errorf("%w while seeking to palette at palette pointer 0x%08x", err, palPtr)
+	if _, err := r.Seek(offset+4+int64(rawFr.PalPtr), os.SEEK_SET); err != nil {
+		return fr, fmt.Errorf("%w while seeking to palette at palette pointer 0x%08x", err, rawFr.PalPtr)
 	}
 
 	var paletteByteSize uint32
 	if err := binary.Read(r, binary.LittleEndian, &paletteByteSize); err != nil {
-		return fr, fmt.Errorf("%w while reading palette header at palette pointer 0x%08x", err, palPtr)
+		return fr, fmt.Errorf("%w while reading palette header at palette pointer 0x%08x", err, rawFr.PalPtr)
 	}
 
 	// TODO: Something useful with paletteByteSize?
@@ -244,7 +220,7 @@ func ReadFrame(r io.ReadSeeker, offset int64) (Frame, error) {
 			if errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, io.EOF) {
 				break
 			}
-			return fr, fmt.Errorf("%w while reading palbank %d at palette pointer 0x%08x", err, i, palPtr)
+			return fr, fmt.Errorf("%w while reading palbank %d at palette pointer 0x%08x", err, i, rawFr.PalPtr)
 		}
 
 		if binary.LittleEndian.Uint32(raw[:4]) == 4 {
@@ -253,7 +229,7 @@ func ReadFrame(r io.ReadSeeker, offset int64) (Frame, error) {
 
 		palette, err := ReadPalette(bytes.NewBuffer(raw[:]))
 		if err != nil {
-			return fr, fmt.Errorf("%w while reading palbank %d at palette pointer 0x%08x", err, i, palPtr)
+			return fr, fmt.Errorf("%w while reading palbank %d at palette pointer 0x%08x", err, i, rawFr.PalPtr)
 		}
 
 		// Palette entry 0 is always transparent.
@@ -262,16 +238,16 @@ func ReadFrame(r io.ReadSeeker, offset int64) (Frame, error) {
 	}
 
 	// Decode OAM entries.
-	if _, err := r.Seek(offset+4+int64(oamPtrPtr), os.SEEK_SET); err != nil {
-		return fr, fmt.Errorf("%w while seeking to OAM pointer at OAM pointer pointer 0x%08x", err, oamPtrPtr)
+	if _, err := r.Seek(offset+4+int64(rawFr.OAMPtrPtr), os.SEEK_SET); err != nil {
+		return fr, fmt.Errorf("%w while seeking to OAM pointer at OAM pointer pointer 0x%08x", err, rawFr.OAMPtrPtr)
 	}
 
 	var oamPtr uint32
 	if err := binary.Read(r, binary.LittleEndian, &oamPtr); err != nil {
-		return fr, fmt.Errorf("%w while reading OAM pointer at OAM pointer pointer 0x%08x", err, oamPtrPtr)
+		return fr, fmt.Errorf("%w while reading OAM pointer at OAM pointer pointer 0x%08x", err, rawFr.OAMPtrPtr)
 	}
 
-	if _, err := r.Seek(offset+4+int64(oamPtrPtr+oamPtr), os.SEEK_SET); err != nil {
+	if _, err := r.Seek(offset+4+int64(rawFr.OAMPtrPtr+oamPtr), os.SEEK_SET); err != nil {
 		return fr, fmt.Errorf("%w while reading OAM at OAM pointer 0x%08x", err, oamPtr)
 	}
 
