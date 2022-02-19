@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/binary"
 	"flag"
 	"fmt"
@@ -15,12 +16,17 @@ import (
 	"github.com/nbarena/bnrom/sprites"
 	"github.com/nbarena/gbarom"
 	"github.com/nbarena/gbarom/bgr555"
+	"github.com/schollz/progressbar/v3"
 )
 
 type romInfo struct {
 	Offset int64
 	Count  int
 }
+
+var falzarGigaPalette = []uint8{0x00, 0x00, 0xDE, 0x7B, 0x74, 0x77, 0xCC, 0x49, 0xEB, 0x44, 0x07, 0x77, 0x43, 0x6E, 0x82, 0x55, 0xC1, 0x40, 0x3E, 0x1B, 0x59, 0x26, 0xB4, 0x09, 0xDD, 0x76, 0x7B, 0x55, 0x39, 0x20, 0x05, 0x18}
+var gregarGigaPalette = []uint8{0x00, 0x00, 0xFF, 0x77, 0x9E, 0x47, 0x3F, 0x1F, 0x7D, 0x0A, 0x77, 0x0D, 0xF4, 0x04, 0x51, 0x00, 0x89, 0x10, 0xA3, 0x18, 0x5F, 0x4D, 0x87, 0x37, 0x90, 0x7F, 0xCC, 0x5A, 0x09, 0x36, 0x26, 0x21}
+var dblBeastPalette = []uint8{0x7F, 0x7D, 0x9F, 0x13, 0x5E, 0x22, 0x1F, 0x0D, 0xB1, 0x00, 0xD0, 0x41, 0x0D, 0x3D, 0x30, 0x13, 0x99, 0x61, 0xFF, 0x77, 0xA8, 0x4E, 0xA8, 0x39, 0x03, 0x21, 0xF9, 0x5A, 0x30, 0x5F, 0x61, 0x0C}
 
 func findROMInfo(romID string) *romInfo {
 	switch romID {
@@ -87,6 +93,14 @@ func main() {
 
 	log.Printf("Game title: %s", romTitle)
 
+	var ereaderGigaPalette []uint8
+	switch romTitle {
+	case "ROCKEXE6_GXX":
+		ereaderGigaPalette = gregarGigaPalette
+	case "ROCKEXE6_RXX":
+		ereaderGigaPalette = falzarGigaPalette
+	}
+
 	romID, err := gbarom.ReadROMID(f)
 	if err != nil {
 		log.Fatalf("%s", err)
@@ -104,7 +118,12 @@ func main() {
 	os.Mkdir("chips", 0o700)
 
 	chipInfos := make([]ChipInfo, info.Count)
+
+	bar1 := progressbar.Default(int64(info.Count))
+	bar1.Describe("decode")
 	for i := 0; i < len(chipInfos); i++ {
+		bar1.Add(1)
+		bar1.Describe(fmt.Sprintf("decode: %04d", i))
 		ci, err := ReadChipInfo(f)
 		if err != nil {
 			log.Fatalf("%s", err)
@@ -112,10 +131,11 @@ func main() {
 		chipInfos[i] = ci
 	}
 
+	bar2 := progressbar.Default(int64(len(chipInfos)))
+	bar2.Describe("dump")
 	for i, ci := range chipInfos {
-		if ci.ChipPalettePtr&0x08000000 != 0x08000000 {
-			continue
-		}
+		bar2.Add(1)
+		bar2.Describe(fmt.Sprintf("dump: %04d", i))
 
 		if _, err := f.Seek(int64(ci.ChipImagePtr & ^uint32(0x08000000)), os.SEEK_SET); err != nil {
 			log.Fatalf("%s", err)
@@ -134,14 +154,26 @@ func main() {
 			}
 		}
 
-		if _, err := f.Seek(int64(ci.ChipPalettePtr & ^uint32(0x08000000)), os.SEEK_SET); err != nil {
-			log.Fatalf("%s", err)
+		var palette color.Palette
+		var palR io.Reader
+		if ci.ChipPalettePtr&0x08000000 == 0x08000000 {
+			if _, err := f.Seek(int64(ci.ChipPalettePtr & ^uint32(0x08000000)), os.SEEK_SET); err != nil {
+				log.Fatalf("%s", err)
+			}
+			palR = f
+		} else {
+			var customPal []uint8
+			if ci.ChipPalettePtr == 0x02000b10 {
+				customPal = ereaderGigaPalette
+			} else if ci.ChipPalettePtr == 0x02000af0 {
+				customPal = dblBeastPalette
+			}
+			palR = bytes.NewBuffer(customPal)
 		}
 
-		var palette color.Palette
 		for j := 0; j < 16; j++ {
 			var c uint16
-			if err := binary.Read(f, binary.LittleEndian, &c); err != nil {
+			if err := binary.Read(palR, binary.LittleEndian, &c); err != nil {
 				log.Fatalf("%s", err)
 			}
 
