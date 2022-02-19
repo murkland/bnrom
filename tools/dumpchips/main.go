@@ -12,10 +12,10 @@ import (
 	"log"
 	"os"
 
-	"github.com/nbarena/bnrom/paletted"
-	"github.com/nbarena/bnrom/sprites"
-	"github.com/nbarena/gbarom"
-	"github.com/nbarena/gbarom/bgr555"
+	"github.com/undernet/bnrom/paletted"
+	"github.com/undernet/bnrom/sprites"
+	"github.com/undernet/gbarom"
+	"github.com/undernet/gbarom/bgr555"
 	"github.com/schollz/progressbar/v3"
 )
 

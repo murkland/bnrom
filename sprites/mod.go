@@ -10,9 +10,9 @@ import (
 	"io"
 	"os"
 
-	"github.com/nbarena/bnrom/paletted"
-	"github.com/nbarena/gbarom/bgr555"
-	"github.com/nbarena/gbarom/lz77"
+	"github.com/undernet/bnrom/paletted"
+	"github.com/undernet/gbarom/bgr555"
+	"github.com/undernet/gbarom/lz77"
 )
 
 type Flip uint8

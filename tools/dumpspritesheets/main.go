@@ -16,9 +16,9 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/nbarena/bnrom/sprites"
-	"github.com/nbarena/gbarom"
-	"github.com/nbarena/pngchunks"
+	"github.com/undernet/bnrom/sprites"
+	"github.com/undernet/gbarom"
+	"github.com/undernet/pngchunks"
 	"github.com/schollz/progressbar/v3"
 	"golang.org/x/sync/errgroup"
 )
