@@ -9,7 +9,6 @@ import (
 	"image/color"
 	"io"
 	"os"
-	"strings"
 
 	"github.com/nbarena/bnrom/paletted"
 	"github.com/nbarena/gbarom/bgr555"
@@ -442,87 +441,4 @@ func ReadNext(r io.ReadSeeker) ([]Animation, error) {
 	}
 
 	return anims, nil
-}
-
-type ROMInfo struct {
-	ID     string
-	Offset int64
-	Count  int
-}
-
-func ReadROMInfo(r io.ReadSeeker) (*ROMInfo, error) {
-	romID, err := ReadROMID(r)
-	if err != nil {
-		return nil, err
-	}
-
-	switch romID {
-	case "BR6E", "BR6P", "BR5E", "BR5P":
-		return &ROMInfo{romID, 0x00031CEC, 815}, nil
-	case "BR6J", "BR5J":
-		return &ROMInfo{romID, 0x00032CA8, 815}, nil
-	case "BRBE":
-		return &ROMInfo{romID, 0x00032750, 664}, nil
-	case "BRKE":
-		return &ROMInfo{romID, 0x00032754, 664}, nil
-	case "BRBJ":
-		return &ROMInfo{romID, 0x000326e8, 664}, nil
-	case "BRKJ":
-		return &ROMInfo{romID, 0x000326ec, 664}, nil
-	case "BR4J":
-		return &ROMInfo{romID, 0x0002b39c, 568}, nil
-	case "B4BE":
-		return &ROMInfo{romID, 0x00027968, 616}, nil
-	case "B4WE":
-		return &ROMInfo{romID, 0x00027964, 616}, nil
-	case "B4BJ":
-		return &ROMInfo{romID, 0x00027880, 616}, nil
-	case "B4WJ":
-		return &ROMInfo{romID, 0x0002787c, 616}, nil
-	case "A6BE":
-		return &ROMInfo{romID, 0x000247a0, 821}, nil
-	case "A3XE":
-		return &ROMInfo{romID, 0x00024788, 821}, nil
-	case "A6BJ":
-		return &ROMInfo{romID, 0x000248f8, 565}, nil
-	case "A3XJ":
-		return &ROMInfo{romID, 0x000248e0, 564}, nil
-	case "AE2E":
-		return &ROMInfo{romID, 0x0001e9fc, 501}, nil
-	case "AE2J":
-		return &ROMInfo{romID, 0x0001e888, 501}, nil
-	case "AREE":
-		return &ROMInfo{romID, 0x00012690, 344}, nil
-	case "AREP":
-		return &ROMInfo{romID, 0x0001269c, 344}, nil
-	case "AREJ":
-		return &ROMInfo{romID, 0x00012614, 344}, nil
-	}
-	return nil, nil
-}
-
-func ReadROMID(r io.ReadSeeker) (string, error) {
-	var romID [4]byte
-	if _, err := r.Seek(0x000000AC, os.SEEK_SET); err != nil {
-		return "", err
-	}
-
-	if _, err := io.ReadFull(r, romID[:]); err != nil {
-		return "", err
-	}
-
-	return string(romID[:]), nil
-}
-
-func ReadROMTitle(r io.ReadSeeker) (string, error) {
-	var romTitle [12]byte
-	if _, err := r.Seek(0x000000A0, os.SEEK_SET); err != nil {
-		return "", err
-	}
-
-	if _, err := io.ReadFull(r, romTitle[:]); err != nil {
-		return "", err
-	}
-
-	return strings.TrimRight(string(romTitle[:]), "\x00"), nil
 }

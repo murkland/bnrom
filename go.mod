@@ -3,7 +3,7 @@ module github.com/nbarena/bnrom
 go 1.18
 
 require (
-	github.com/nbarena/gbarom v0.0.0-20220217214820-60b053210180
+	github.com/nbarena/gbarom v0.0.0-20220219021242-1856e8c81eb0
 	github.com/nbarena/pngchunks v0.0.0-20220214173456-6c478b236455
 )
 

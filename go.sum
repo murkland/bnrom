@@ -8,6 +8,8 @@ github.com/mitchellh/colorstring v0.0.0-20190213212951-d06e56a500db h1:62I3jR2Em
 github.com/mitchellh/colorstring v0.0.0-20190213212951-d06e56a500db/go.mod h1:l0dey0ia/Uv7NcFFVbCLtqEBQbrT4OCwCSKTEv6enCw=
 github.com/nbarena/gbarom v0.0.0-20220217214820-60b053210180 h1:H/UhnhtiY4z0NeX7nK4qUYmMtuBci9INVVWuGG09UTA=
 github.com/nbarena/gbarom v0.0.0-20220217214820-60b053210180/go.mod h1:7Y2Bm5YCbVO0iTemCOcYpJPYBxX//nGaqJzb0GKZ31s=
+github.com/nbarena/gbarom v0.0.0-20220219021242-1856e8c81eb0 h1:WNTZSGETI2rkIdjACO/vIUk+p/dJ652m9RPwRzVMyV0=
+github.com/nbarena/gbarom v0.0.0-20220219021242-1856e8c81eb0/go.mod h1:7Y2Bm5YCbVO0iTemCOcYpJPYBxX//nGaqJzb0GKZ31s=
 github.com/nbarena/pngchunks v0.0.0-20220214173456-6c478b236455 h1:d/WD8OfcH7eoTC6vtiv5Qe51iyQ451q6OhXGZ8Or0AA=
 github.com/nbarena/pngchunks v0.0.0-20220214173456-6c478b236455/go.mod h1:BjXw6pitWzaG1hgOWtnzwrgZuL6mfvM/ZY7v5gpJZiY=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
