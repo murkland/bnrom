@@ -7,6 +7,7 @@ import (
 	"image"
 	"image/color"
 	"image/png"
+	"io"
 	"log"
 	"os"
 
@@ -24,11 +25,51 @@ type romInfo struct {
 func findROMInfo(romID string) *romInfo {
 	switch romID {
 	case "BR6E", "BR6P", "BR5E", "BR5P":
-		return &romInfo{0x00021DF4, 138}
+		return &romInfo{0x00021DD4, 410}
 	case "BR6J", "BR5J":
-		return &romInfo{0x00022234, 146}
+		return &romInfo{0x00022214, 409}
 	}
 	return nil
+}
+
+type ChipInfo struct {
+	ChipCodes           uint32 // 0
+	AttackElement       uint8  // 4
+	Rarity              uint8  // 5
+	ElementIcon         uint8  // 6
+	Library             uint8  // 7
+	MB                  uint8  // 8
+	EffectFlags         uint8  // 9
+	Counter             uint8  // a
+	AttackFamily        uint8  // b
+	AttackSubfamily     uint8  // c
+	DarkSoulBehavior    uint8  // d
+	Unknown             uint8  // e
+	LocksOn             uint8  // f
+	AttackParam1        uint8  // 10
+	AttackParam2        uint8  // 11
+	AttackParam3        uint8  // 12
+	AttackParam4        uint8  // 13
+	Delay               uint8  // 14
+	LibraryNumber       uint8  // 15
+	LibraryFlags        uint8  // 16
+	LockOnType          uint8  // 17
+	AlphaPos            uint16 // 18
+	Damage              uint16 // 1a
+	IDPos               uint16 // 1c
+	BattleChipGateLimit uint8  // 1e
+	DarkchipID          uint8  // 1f
+	ChipIconPtr         uint32 // 20
+	ChipImagePtr        uint32 // 24
+	ChipPalettePtr      uint32 // 28
+}
+
+func ReadChipInfo(r io.Reader) (ChipInfo, error) {
+	var d ChipInfo
+	if err := binary.Read(r, binary.LittleEndian, &d); err != nil {
+		return ChipInfo{}, err
+	}
+	return d, nil
 }
 
 func main() {
@@ -60,29 +101,23 @@ func main() {
 		log.Fatalf("%s", err)
 	}
 
-	var mysteryPtr uint32
-	if err := binary.Read(f, binary.LittleEndian, &mysteryPtr); err != nil {
-		log.Fatalf("%s", err)
-	}
-
-	_ = mysteryPtr
-
-	var tilesPtr uint32
-	if err := binary.Read(f, binary.LittleEndian, &tilesPtr); err != nil {
-		log.Fatalf("%s", err)
-	}
-	tilesPos := int64(tilesPtr & ^uint32(0x08000000))
-
-	var palettePtr uint32
-	if err := binary.Read(f, binary.LittleEndian, &palettePtr); err != nil {
-		log.Fatalf("%s", err)
-	}
-	palettePos := int64(palettePtr & ^uint32(0x08000000))
-
 	os.Mkdir("chips", 0o700)
 
-	for i := 0; i < info.Count; i++ {
-		if _, err := f.Seek(int64(tilesPos), os.SEEK_SET); err != nil {
+	chipInfos := make([]ChipInfo, info.Count)
+	for i := 0; i < len(chipInfos); i++ {
+		ci, err := ReadChipInfo(f)
+		if err != nil {
+			log.Fatalf("%s", err)
+		}
+		chipInfos[i] = ci
+	}
+
+	for i, ci := range chipInfos {
+		if ci.ChipPalettePtr&0x08000000 != 0x08000000 {
+			continue
+		}
+
+		if _, err := f.Seek(int64(ci.ChipImagePtr & ^uint32(0x08000000)), os.SEEK_SET); err != nil {
 			log.Fatalf("%s", err)
 		}
 
@@ -99,12 +134,7 @@ func main() {
 			}
 		}
 
-		tilesPos, err = f.Seek(0, os.SEEK_CUR)
-		if err != nil {
-			log.Fatalf("%s", err)
-		}
-
-		if _, err := f.Seek(int64(palettePos), os.SEEK_SET); err != nil {
+		if _, err := f.Seek(int64(ci.ChipPalettePtr & ^uint32(0x08000000)), os.SEEK_SET); err != nil {
 			log.Fatalf("%s", err)
 		}
 
@@ -119,11 +149,6 @@ func main() {
 		}
 
 		img.Palette = palette
-
-		palettePos, err = f.Seek(0, os.SEEK_CUR)
-		if err != nil {
-			log.Fatalf("%s", err)
-		}
 
 		outf, err := os.Create(fmt.Sprintf("chips/%03d.png", i))
 		if err != nil {
