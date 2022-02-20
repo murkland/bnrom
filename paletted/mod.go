@@ -50,3 +50,62 @@ func FlipVertical(img *image.Paletted) {
 		copy(img.Pix[y1*img.Rect.Max.X:y1*img.Rect.Max.X+w], upper)
 	}
 }
+
+func FindTrim(img *image.Paletted) image.Rectangle {
+	left := img.Rect.Min.X
+	top := img.Rect.Min.Y
+	right := img.Rect.Max.X
+	bottom := img.Rect.Max.Y
+
+	for left = img.Rect.Min.X; left < img.Rect.Max.X; left++ {
+		for y := img.Rect.Min.Y; y < img.Rect.Max.Y; y++ {
+			if img.Pix[y*img.Rect.Max.X+left] != 0 {
+				goto leftDone
+			}
+		}
+		continue
+	leftDone:
+		break
+	}
+
+	for top = img.Rect.Min.Y; top < img.Rect.Max.Y; top++ {
+		for x := img.Rect.Min.X; x < img.Rect.Max.X; x++ {
+			if img.Pix[top*img.Rect.Max.X+x] != 0 {
+				goto topDone
+			}
+		}
+		continue
+	topDone:
+		break
+	}
+
+	for right = img.Rect.Max.X - 1; right >= img.Rect.Min.X; right-- {
+		for y := img.Rect.Min.Y; y < img.Rect.Max.Y; y++ {
+			if img.Pix[y*img.Rect.Max.X+right] != 0 {
+				goto rightDone
+			}
+		}
+		continue
+	rightDone:
+		break
+	}
+	right++
+
+	for bottom = img.Rect.Max.Y - 1; bottom >= img.Rect.Min.Y; bottom-- {
+		for x := img.Rect.Min.X; x < img.Rect.Max.X; x++ {
+			if img.Pix[bottom*img.Rect.Max.X+x] != 0 {
+				goto bottomDone
+			}
+		}
+		continue
+	bottomDone:
+		break
+	}
+	bottom++
+
+	if right < left || bottom < top {
+		return image.Rect(0, 0, 0, 0)
+	}
+
+	return image.Rectangle{image.Point{left, top}, image.Point{right, bottom}}
+}

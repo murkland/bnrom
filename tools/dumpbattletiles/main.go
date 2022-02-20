@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"flag"
 	"fmt"
 	"image"
@@ -16,6 +17,8 @@ import (
 	"github.com/yumland/bnrom/sprites"
 	"github.com/yumland/gbarom/bgr555"
 	"github.com/yumland/gbarom/lz77"
+	"github.com/yumland/pngchunks"
+	"golang.org/x/sync/errgroup"
 )
 
 const paletteOffsetPtr = 0x0000C16C
@@ -119,6 +122,55 @@ var tileGroups = [][]int{
 	{491, 492, 493, -492, -491},
 }
 
+var redTileByIndex = [][]int{
+	{35},
+	{35},
+	{35},
+	{35},
+	{36, 2, 3, 4, 5, 6},
+	{38, 10, 11, 12, 13, 14, 15},
+	{35},
+	{37},
+	{36},
+	{37, 7, 8, 9},
+	{37, 7, 8, 9},
+	{37, 7, 8, 9},
+	{37, 7, 8, 9},
+	{35},
+}
+
+var blueTileByIndex = [][]int{
+	{39},
+	{39},
+	{39},
+	{39},
+	{40, 18, 19, 20, 21, 22},
+	{42, 26, 27, 28, 29, 30, 31},
+	{39},
+	{41},
+	{40},
+	{41, 23, 24, 25},
+	{41, 23, 24, 25},
+	{41, 23, 24, 25},
+	{41, 23, 24, 25},
+	{39},
+}
+
+func consolidatePalbank(palbanks []color.Palette, tilePaletteses [][]int) (color.Palette, map[int]int) {
+	var consolidated color.Palette
+	m := map[int]int{}
+	consolidated = append(consolidated, palbanks[tilePaletteses[0][0]][:7]...)
+	for _, tilePalettes := range tilePaletteses {
+		for _, paletteIdx := range tilePalettes {
+			if _, ok := m[paletteIdx]; !ok {
+				m[paletteIdx] = len(consolidated)
+				consolidated = append(consolidated, palbanks[paletteIdx][7:]...)
+			}
+		}
+	}
+	return consolidated, m
+}
+
 func main() {
 	flag.Parse()
 
@@ -164,6 +216,9 @@ func main() {
 		palbanks = append(palbanks, palette)
 	}
 
+	redPal, m := consolidatePalbank(palbanks, redTileByIndex)
+	bluePal, _ := consolidatePalbank(palbanks, blueTileByIndex)
+
 	if _, err := f.Seek(tilesOffsetPtr, os.SEEK_SET); err != nil {
 		log.Fatalf("%s", err)
 	}
@@ -182,48 +237,135 @@ func main() {
 		log.Fatalf("%s", err)
 	}
 
-	img := image.NewPaletted(image.Rect(0, 0, 5*8, len(tileGroups)*3*8), palbanks[0])
+	img := image.NewPaletted(image.Rect(0, 0, 9*5*8, 200*3*8), nil)
 
+	idx := 0
 	for j, tg := range tileGroups {
-		for i, tIndex := range tg {
-			flipH := false
-			if tIndex < 0 {
-				flipH = true
-				tIndex = -tIndex
+		for _, pIndex := range redTileByIndex[j/3] {
+			offset := m[pIndex]
+
+			for i, tIndex := range tg {
+				flipH := false
+				if tIndex < 0 {
+					flipH = true
+					tIndex = -tIndex
+				}
+				tIndex--
+
+				tileImg, err := sprites.ReadTile(bytes.NewBuffer(rawTiles[tIndex*8*8/2 : (tIndex+1)*8*8/2]))
+				if err != nil {
+					log.Fatalf("%s", err)
+				}
+
+				if flipH {
+					paletted.FlipHorizontal(tileImg)
+				}
+
+				tileImgCopy := image.NewPaletted(tileImg.Rect, nil)
+
+				for i, pix := range tileImg.Pix {
+					if pix >= 7 {
+						pix = pix - 7 + uint8(offset)
+					}
+					tileImgCopy.Pix[i] = pix
+				}
+
+				xIdx := idx % 9
+				yIdx := idx / 9
+
+				x := (i%5)*8 + xIdx*5*8
+				y := (i/5)*8 + yIdx*3*8
+
+				paletted.DrawOver(img, image.Rect(x, y, x+8, y+8), tileImgCopy, image.Point{})
 			}
-			tIndex--
-
-			tileImg, err := sprites.ReadTile(bytes.NewBuffer(rawTiles[tIndex*8*8/2 : (tIndex+1)*8*8/2]))
-			if err != nil {
-				log.Fatalf("%s", err)
-			}
-
-			tileImg.Palette = img.Palette
-			if err != nil {
-				log.Fatalf("%s", err)
-			}
-
-			if flipH {
-				paletted.FlipHorizontal(tileImg)
-			}
-
-			x := (i % 5) * 8
-			y := (i/5)*8 + j*3*8
-
-			paletted.DrawOver(img, image.Rect(x, y, x+8, y+8), tileImg, image.Point{})
+			idx++
 		}
 	}
+	img = img.SubImage(paletted.FindTrim(img)).(*image.Paletted)
 
-	for i, palbank := range palbanks {
-		img.Palette = palbank
+	img.Palette = redPal
+	outf, err := os.Create(fmt.Sprintf("tiles.png"))
+	if err != nil {
+		log.Fatalf("%s", err)
+	}
 
-		outf, err := os.Create(fmt.Sprintf("tiles/%02d.png", i))
+	r, w := io.Pipe()
+
+	var g errgroup.Group
+
+	g.Go(func() error {
+		defer w.Close()
+		if err := png.Encode(w, img); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	pngr, err := pngchunks.NewReader(r)
+	if err != nil {
+		log.Fatalf("%s", err)
+	}
+
+	pngw, err := pngchunks.NewWriter(outf)
+	if err != nil {
+		log.Fatalf("%s", err)
+	}
+
+	for {
+		chunk, err := pngr.NextChunk()
 		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+		}
+
+		if err := pngw.WriteChunk(chunk.Length(), chunk.Type(), chunk); err != nil {
 			log.Fatalf("%s", err)
 		}
 
-		if err := png.Encode(outf, img); err != nil {
+		if chunk.Type() == "tRNS" {
+			// Pack metadata in here.
+			{
+				var buf bytes.Buffer
+				buf.WriteString("blue")
+				buf.WriteByte('\x00')
+				buf.WriteByte('\x08')
+				for _, c := range bluePal {
+					rgba := c.(color.RGBA)
+					buf.WriteByte(rgba.R)
+					buf.WriteByte(rgba.G)
+					buf.WriteByte(rgba.B)
+					buf.WriteByte(rgba.A)
+					buf.WriteByte('\xff')
+					buf.WriteByte('\xff')
+				}
+				if err := pngw.WriteChunk(int32(buf.Len()), "sPLT", bytes.NewBuffer(buf.Bytes())); err != nil {
+					log.Fatalf("%s", err)
+				}
+			}
+
+			{
+				var buf bytes.Buffer
+				buf.WriteString("tctrl")
+				buf.WriteByte('\x00')
+				buf.WriteByte('\xff')
+				for _, tiles := range redTileByIndex {
+					buf.WriteByte(byte(len(tiles)))
+				}
+				if err := pngw.WriteChunk(int32(buf.Len()), "zTXt", bytes.NewBuffer(buf.Bytes())); err != nil {
+					log.Fatalf("%s", err)
+				}
+
+			}
+		}
+
+		if err := chunk.Close(); err != nil {
 			log.Fatalf("%s", err)
 		}
 	}
+
+	if err := g.Wait(); err != nil {
+		log.Fatalf("%s", err)
+	}
+
 }

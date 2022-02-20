@@ -16,10 +16,11 @@ import (
 	"os"
 	"runtime"
 
+	"github.com/schollz/progressbar/v3"
+	"github.com/yumland/bnrom/paletted"
 	"github.com/yumland/bnrom/sprites"
 	"github.com/yumland/gbarom"
 	"github.com/yumland/pngchunks"
-	"github.com/schollz/progressbar/v3"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -74,69 +75,6 @@ func findROMInfo(romID string) *romInfo {
 	return nil
 }
 
-func FindBbox(img image.Image) image.Rectangle {
-	left := img.Bounds().Min.X
-	top := img.Bounds().Min.Y
-	right := img.Bounds().Max.X
-	bottom := img.Bounds().Max.Y
-
-	for left = img.Bounds().Min.X; left < img.Bounds().Max.X; left++ {
-		for y := img.Bounds().Min.Y; y < img.Bounds().Max.Y; y++ {
-			_, _, _, a := img.At(left, y).RGBA()
-			if a != 0 {
-				goto leftDone
-			}
-		}
-		continue
-	leftDone:
-		break
-	}
-
-	for top = img.Bounds().Min.Y; top < img.Bounds().Max.Y; top++ {
-		for x := img.Bounds().Min.X; x < img.Bounds().Max.X; x++ {
-			_, _, _, a := img.At(x, top).RGBA()
-			if a != 0 {
-				goto topDone
-			}
-		}
-		continue
-	topDone:
-		break
-	}
-
-	for right = img.Bounds().Max.X - 1; right >= img.Bounds().Min.X; right-- {
-		for y := img.Bounds().Min.Y; y < img.Bounds().Max.Y; y++ {
-			_, _, _, a := img.At(right, y).RGBA()
-			if a != 0 {
-				goto rightDone
-			}
-		}
-		continue
-	rightDone:
-		break
-	}
-	right++
-
-	for bottom = img.Bounds().Max.Y - 1; bottom >= img.Bounds().Min.Y; bottom-- {
-		for x := img.Bounds().Min.X; x < img.Bounds().Max.X; x++ {
-			_, _, _, a := img.At(x, bottom).RGBA()
-			if a != 0 {
-				goto bottomDone
-			}
-		}
-		continue
-	bottomDone:
-		break
-	}
-	bottom++
-
-	if right < left || bottom < top {
-		return image.Rect(0, 0, 0, 0)
-	}
-
-	return image.Rectangle{image.Point{left, top}, image.Point{right, bottom}}
-}
-
 type FrameInfo struct {
 	BBox   image.Rectangle
 	Origin image.Point
@@ -163,14 +101,14 @@ func processOne(idx int, anims []sprites.Animation) error {
 			img := frame.MakeImage()
 			spriteImg.Palette = img.Palette
 
-			trimBbox := FindBbox(img)
+			trimBbox := paletted.FindTrim(img)
 
 			frameInfo.Origin.X = img.Rect.Dx()/2 - trimBbox.Min.X
 			frameInfo.Origin.Y = img.Rect.Dy()/2 - trimBbox.Min.Y
 
 			if left+trimBbox.Dx() > spriteImg.Rect.Dx() {
 				left = 0
-				top = FindBbox(spriteImg).Max.Y
+				top = paletted.FindTrim(spriteImg).Max.Y
 				top++
 			}
 
@@ -187,10 +125,15 @@ func processOne(idx int, anims []sprites.Animation) error {
 		return nil
 	}
 
-	subimg := spriteImg.SubImage(FindBbox(spriteImg))
+	subimg := spriteImg.SubImage(paletted.FindTrim(spriteImg))
 	if subimg.Bounds().Dx() == 0 || subimg.Bounds().Dy() == 0 {
 		return nil
 	}
+	f, err := os.Create(fmt.Sprintf("sprites/%04d.png", idx))
+	if err != nil {
+		return err
+	}
+	defer f.Close()
 
 	r, w := io.Pipe()
 
@@ -203,12 +146,6 @@ func processOne(idx int, anims []sprites.Animation) error {
 		}
 		return nil
 	})
-
-	f, err := os.Create(fmt.Sprintf("sprites/%04d.png", idx))
-	if err != nil {
-		return err
-	}
-	defer f.Close()
 
 	pngr, err := pngchunks.NewReader(r)
 	if err != nil {

@@ -12,11 +12,11 @@ import (
 	"log"
 	"os"
 
+	"github.com/schollz/progressbar/v3"
 	"github.com/yumland/bnrom/paletted"
 	"github.com/yumland/bnrom/sprites"
 	"github.com/yumland/gbarom"
 	"github.com/yumland/gbarom/bgr555"
-	"github.com/schollz/progressbar/v3"
 )
 
 type romInfo struct {
