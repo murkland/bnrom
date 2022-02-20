@@ -171,19 +171,19 @@ func processOne(idx int, anims []sprites.Animation) error {
 
 		if chunk.Type() == "tRNS" {
 			// Pack metadata in here.
-			{
+			if len(fullPalette) > 256 {
 				var buf bytes.Buffer
-				buf.WriteString("full")
+				buf.WriteString("extra")
 				buf.WriteByte('\x00')
 				buf.WriteByte('\x08')
-				for _, c := range fullPalette {
+				for _, c := range fullPalette[256:] {
 					rgba := c.(color.RGBA)
 					buf.WriteByte(rgba.R)
 					buf.WriteByte(rgba.G)
 					buf.WriteByte(rgba.B)
 					buf.WriteByte(rgba.A)
-					buf.WriteByte('\xff')
-					buf.WriteByte('\xff')
+					buf.WriteByte('\x00')
+					buf.WriteByte('\x00')
 				}
 				if err := pngw.WriteChunk(int32(buf.Len()), "sPLT", bytes.NewBuffer(buf.Bytes())); err != nil {
 					return err
@@ -192,7 +192,7 @@ func processOne(idx int, anims []sprites.Animation) error {
 
 			{
 				var buf bytes.Buffer
-				buf.WriteString("fsctrl")
+				buf.WriteString("sctrl")
 				buf.WriteByte('\x00')
 				buf.WriteByte('\xff')
 				for _, info := range infos {
