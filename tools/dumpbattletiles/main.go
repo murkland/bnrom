@@ -122,6 +122,29 @@ var tileGroups = [][]int{
 	{491, 492, 493, -492, -491},
 }
 
+const (
+	poisonFrameTime = 16
+	holyFrameTime   = 10
+	roadFrameTime   = 8
+)
+
+var frameTimes = []int{
+	1,
+	1,
+	1,
+	1,
+	poisonFrameTime,
+	holyFrameTime,
+	1,
+	1,
+	1,
+	roadFrameTime,
+	roadFrameTime,
+	roadFrameTime,
+	roadFrameTime,
+	1,
+}
+
 var redTileByIndex = [][]int{
 	{35},
 	{35},
@@ -155,6 +178,9 @@ var blueTileByIndex = [][]int{
 	{41, 23, 24, 25},
 	{39},
 }
+
+const tileWidth = 5 * 8
+const tileHeight = 3 * 8
 
 func consolidatePalbank(palbanks []color.Palette, tilePaletteses [][]int) (color.Palette, map[int]int) {
 	var consolidated color.Palette
@@ -237,7 +263,7 @@ func main() {
 		log.Fatalf("%s", err)
 	}
 
-	img := image.NewPaletted(image.Rect(0, 0, 9*5*8, 200*3*8), nil)
+	img := image.NewPaletted(image.Rect(0, 0, 9*tileWidth, 200*tileHeight), nil)
 
 	idx := 0
 	for j, tg := range tileGroups {
@@ -273,8 +299,8 @@ func main() {
 				xIdx := idx % 9
 				yIdx := idx / 9
 
-				x := (i%5)*8 + xIdx*5*8
-				y := (i/5)*8 + yIdx*3*8
+				x := (i%5)*8 + xIdx*tileWidth
+				y := (i/5)*8 + yIdx*tileHeight
 
 				paletted.DrawOver(img, image.Rect(x, y, x+8, y+8), tileImgCopy, image.Point{})
 			}
@@ -331,11 +357,7 @@ func main() {
 				buf.WriteByte('\x00')
 				buf.WriteByte('\x08')
 				for _, c := range bluePal {
-					rgba := c.(color.RGBA)
-					buf.WriteByte(rgba.R)
-					buf.WriteByte(rgba.G)
-					buf.WriteByte(rgba.B)
-					buf.WriteByte(rgba.A)
+					binary.Write(&buf, binary.LittleEndian, c.(color.RGBA))
 					buf.WriteByte('\xff')
 					buf.WriteByte('\xff')
 				}
@@ -346,16 +368,48 @@ func main() {
 
 			{
 				var buf bytes.Buffer
-				buf.WriteString("tctrl")
+				buf.WriteString("fctrl")
 				buf.WriteByte('\x00')
 				buf.WriteByte('\xff')
-				for _, tiles := range redTileByIndex {
-					buf.WriteByte(byte(len(tiles)))
+				tileIdx := 0
+				for k, tiles := range redTileByIndex {
+					for j := 0; j < 3; j++ {
+						for i := 0; i < len(tiles); i++ {
+							action := uint8(0)
+							if i == len(tiles)-1 {
+								action = 0x01
+							}
+
+							x := (tileIdx % 9) * tileWidth
+							y := (tileIdx / 9) * tileHeight
+
+							binary.Write(&buf, binary.LittleEndian, struct {
+								Left    int16
+								Top     int16
+								Right   int16
+								Bottom  int16
+								OriginX int16
+								OriginY int16
+								Delay   uint8
+								Action  uint8
+							}{
+								int16(x),
+								int16(y),
+								int16(x + tileWidth),
+								int16(y + tileHeight),
+								int16(0),
+								int16(0),
+								uint8(frameTimes[k]),
+								action,
+							})
+
+							tileIdx++
+						}
+					}
 				}
 				if err := pngw.WriteChunk(int32(buf.Len()), "zTXt", bytes.NewBuffer(buf.Bytes())); err != nil {
 					log.Fatalf("%s", err)
 				}
-
 			}
 		}
 

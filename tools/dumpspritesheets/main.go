@@ -177,11 +177,7 @@ func processOne(idx int, anims []sprites.Animation) error {
 				buf.WriteByte('\x00')
 				buf.WriteByte('\x08')
 				for _, c := range fullPalette[256:] {
-					rgba := c.(color.RGBA)
-					buf.WriteByte(rgba.R)
-					buf.WriteByte(rgba.G)
-					buf.WriteByte(rgba.B)
-					buf.WriteByte(rgba.A)
+					binary.Write(&buf, binary.LittleEndian, c.(color.RGBA))
 					buf.WriteByte('\x00')
 					buf.WriteByte('\x00')
 				}
@@ -196,13 +192,6 @@ func processOne(idx int, anims []sprites.Animation) error {
 				buf.WriteByte('\x00')
 				buf.WriteByte('\xff')
 				for _, info := range infos {
-					binary.Write(&buf, binary.LittleEndian, int16(info.BBox.Min.X))
-					binary.Write(&buf, binary.LittleEndian, int16(info.BBox.Min.Y))
-					binary.Write(&buf, binary.LittleEndian, int16(info.BBox.Max.X))
-					binary.Write(&buf, binary.LittleEndian, int16(info.BBox.Max.Y))
-					binary.Write(&buf, binary.LittleEndian, int16(info.Origin.X))
-					binary.Write(&buf, binary.LittleEndian, int16(info.Origin.Y))
-					buf.WriteByte(uint8(info.Delay))
 					var action uint8
 					switch info.Action {
 					case sprites.FrameActionNext:
@@ -212,7 +201,26 @@ func processOne(idx int, anims []sprites.Animation) error {
 					case sprites.FrameActionStop:
 						action = 2
 					}
-					buf.WriteByte(action)
+
+					binary.Write(&buf, binary.LittleEndian, struct {
+						Left    int16
+						Top     int16
+						Right   int16
+						Bottom  int16
+						OriginX int16
+						OriginY int16
+						Delay   uint8
+						Action  uint8
+					}{
+						int16(info.BBox.Min.X),
+						int16(info.BBox.Min.Y),
+						int16(info.BBox.Max.X),
+						int16(info.BBox.Max.Y),
+						int16(info.Origin.X),
+						int16(info.Origin.Y),
+						uint8(info.Delay),
+						action,
+					})
 				}
 				if err := pngw.WriteChunk(int32(buf.Len()), "zTXt", bytes.NewBuffer(buf.Bytes())); err != nil {
 					return err
