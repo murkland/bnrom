@@ -15,6 +15,57 @@ import (
 	"github.com/yumland/gbarom/lz77"
 )
 
+type ROMInfo struct {
+	Offset int64
+	Count  int
+}
+
+func FindROMInfo(romID string) *ROMInfo {
+	switch romID {
+	case "BR6E", "BR6P", "BR5E", "BR5P":
+		return &ROMInfo{0x00031CEC, 815}
+	case "BR6J", "BR5J":
+		return &ROMInfo{0x00032CA8, 815}
+	case "BRBE":
+		return &ROMInfo{0x00032750, 664}
+	case "BRKE":
+		return &ROMInfo{0x00032754, 664}
+	case "BRBJ":
+		return &ROMInfo{0x000326e8, 664}
+	case "BRKJ":
+		return &ROMInfo{0x000326ec, 664}
+	case "BR4J":
+		return &ROMInfo{0x0002b39c, 568}
+	case "B4BE":
+		return &ROMInfo{0x00027968, 616}
+	case "B4WE":
+		return &ROMInfo{0x00027964, 616}
+	case "B4BJ":
+		return &ROMInfo{0x00027880, 616}
+	case "B4WJ":
+		return &ROMInfo{0x0002787c, 616}
+	case "A6BE":
+		return &ROMInfo{0x000247a0, 821}
+	case "A3XE":
+		return &ROMInfo{0x00024788, 821}
+	case "A6BJ":
+		return &ROMInfo{0x000248f8, 565}
+	case "A3XJ":
+		return &ROMInfo{0x000248e0, 564}
+	case "AE2E":
+		return &ROMInfo{0x0001e9fc, 501}
+	case "AE2J":
+		return &ROMInfo{0x0001e888, 501}
+	case "AREE":
+		return &ROMInfo{0x00012690, 344}
+	case "AREP":
+		return &ROMInfo{0x0001269c, 344}
+	case "AREJ":
+		return &ROMInfo{0x00012614, 344}
+	}
+	return nil
+}
+
 type Flip uint8
 
 const (

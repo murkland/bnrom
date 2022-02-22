@@ -24,57 +24,6 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-type romInfo struct {
-	Offset int64
-	Count  int
-}
-
-func findROMInfo(romID string) *romInfo {
-	switch romID {
-	case "BR6E", "BR6P", "BR5E", "BR5P":
-		return &romInfo{0x00031CEC, 815}
-	case "BR6J", "BR5J":
-		return &romInfo{0x00032CA8, 815}
-	case "BRBE":
-		return &romInfo{0x00032750, 664}
-	case "BRKE":
-		return &romInfo{0x00032754, 664}
-	case "BRBJ":
-		return &romInfo{0x000326e8, 664}
-	case "BRKJ":
-		return &romInfo{0x000326ec, 664}
-	case "BR4J":
-		return &romInfo{0x0002b39c, 568}
-	case "B4BE":
-		return &romInfo{0x00027968, 616}
-	case "B4WE":
-		return &romInfo{0x00027964, 616}
-	case "B4BJ":
-		return &romInfo{0x00027880, 616}
-	case "B4WJ":
-		return &romInfo{0x0002787c, 616}
-	case "A6BE":
-		return &romInfo{0x000247a0, 821}
-	case "A3XE":
-		return &romInfo{0x00024788, 821}
-	case "A6BJ":
-		return &romInfo{0x000248f8, 565}
-	case "A3XJ":
-		return &romInfo{0x000248e0, 564}
-	case "AE2E":
-		return &romInfo{0x0001e9fc, 501}
-	case "AE2J":
-		return &romInfo{0x0001e888, 501}
-	case "AREE":
-		return &romInfo{0x00012690, 344}
-	case "AREP":
-		return &romInfo{0x0001269c, 344}
-	case "AREJ":
-		return &romInfo{0x00012614, 344}
-	}
-	return nil
-}
-
 type FrameInfo struct {
 	BBox   image.Rectangle
 	Origin image.Point
@@ -268,7 +217,7 @@ func main() {
 		log.Fatalf("%s", err)
 	}
 
-	info := findROMInfo(romID)
+	info := sprites.FindROMInfo(romID)
 	if info == nil {
 		log.Fatalf("unsupported game")
 	}

@@ -13,114 +13,11 @@ import (
 	"log"
 	"os"
 
+	"github.com/yumland/bnrom/battletiles"
 	"github.com/yumland/bnrom/paletted"
-	"github.com/yumland/bnrom/sprites"
-	"github.com/yumland/gbarom/bgr555"
-	"github.com/yumland/gbarom/lz77"
 	"github.com/yumland/pngchunks"
 	"golang.org/x/sync/errgroup"
 )
-
-const paletteOffsetPtr = 0x0000C16C
-const tilesOffsetPtr = 0x0000761C
-
-var tilingSymmetrical = []int{
-	1, 2, 3, -2, -1,
-	4, 5, 5, 5, -4,
-	6, 7, 8, -7, -6,
-}
-var tilingBroken0 = []int{
-	1, 2, 3, 4, 5,
-	6, 7, 7, 8, 9,
-	10, 11, 12, 13, 14,
-}
-var tilingAsymmetrical = []int{
-	1, 2, 3, 4, 5,
-	6, 7, 8, 9, 10,
-	11, 12, 13, 14, 15,
-}
-var tilingSymmetricalB = []int{
-	1, 2, 3, -2, -1,
-	4, 5, 6, -5, -4,
-	7, 8, 9, -8, -7,
-}
-
-func offsetTiling(tiling []int, offset int) []int {
-	t := make([]int, len(tiling))
-	for i, x := range tiling {
-		if x > 0 {
-			t[i] = x + offset
-		} else {
-			t[i] = x - offset
-		}
-	}
-	return t
-}
-
-func flipTiling(tiling []int) []int {
-	t := make([]int, len(tiling))
-	for i, x := range tiling {
-		t[i] = -x
-	}
-	return t
-}
-
-var tileGroups = [][]int{
-	// hole
-	tilingSymmetrical,
-	offsetTiling(tilingSymmetrical, 8),
-	offsetTiling(tilingSymmetrical, 16),
-	// broken
-	offsetTiling(tilingBroken0, 24),
-	offsetTiling(tilingAsymmetrical, 38),
-	offsetTiling(tilingAsymmetrical, 53),
-	// normal
-	offsetTiling(tilingSymmetrical, 68),
-	offsetTiling(tilingSymmetrical, 76),
-	offsetTiling(tilingSymmetrical, 84),
-	// cracked
-	offsetTiling(tilingAsymmetrical, 92),
-	offsetTiling(tilingAsymmetrical, 107),
-	offsetTiling(tilingAsymmetrical, 122),
-	// poison
-	offsetTiling(tilingAsymmetrical, 137),
-	offsetTiling(tilingAsymmetrical, 152),
-	offsetTiling(tilingAsymmetrical, 167),
-	// holy
-	offsetTiling(tilingSymmetricalB, 182),
-	offsetTiling(tilingSymmetricalB, 191),
-	offsetTiling(tilingSymmetricalB, 200),
-	// grass
-	offsetTiling(tilingAsymmetrical, 209),
-	offsetTiling(tilingAsymmetrical, 224),
-	offsetTiling(tilingAsymmetrical, 239),
-	// ice
-	offsetTiling(tilingAsymmetrical, 254),
-	offsetTiling(tilingAsymmetrical, 269),
-	offsetTiling(tilingAsymmetrical, 284),
-	// volcano
-	offsetTiling(tilingAsymmetrical, 299),
-	offsetTiling(tilingAsymmetrical, 314),
-	offsetTiling(tilingAsymmetrical, 329),
-	// road up
-	offsetTiling(tilingSymmetricalB, 344),
-	offsetTiling(tilingSymmetricalB, 353),
-	offsetTiling(tilingSymmetricalB, 362),
-	// road down
-	offsetTiling(tilingSymmetricalB, 371),
-	offsetTiling(tilingSymmetricalB, 380),
-	offsetTiling(tilingSymmetricalB, 389),
-	// road left
-	offsetTiling(flipTiling(tilingAsymmetrical), 398),
-	offsetTiling(flipTiling(tilingAsymmetrical), 413),
-	offsetTiling(flipTiling(tilingAsymmetrical), 428),
-	// road right
-	offsetTiling(tilingAsymmetrical, 443),
-	offsetTiling(tilingAsymmetrical, 458),
-	offsetTiling(tilingAsymmetrical, 473),
-	// edge
-	{491, 492, 493, -492, -491},
-}
 
 const (
 	poisonFrameTime = 16
@@ -145,57 +42,8 @@ var frameTimes = []int{
 	1,
 }
 
-var redTileByIndex = [][]int{
-	{35},
-	{35},
-	{35},
-	{35},
-	{36, 2, 3, 4, 5, 6},
-	{38, 10, 11, 12, 13, 14, 15},
-	{35},
-	{37},
-	{36},
-	{37, 7, 8, 9},
-	{37, 7, 8, 9},
-	{37, 7, 8, 9},
-	{37, 7, 8, 9},
-	{35},
-}
-
-var blueTileByIndex = [][]int{
-	{39},
-	{39},
-	{39},
-	{39},
-	{40, 18, 19, 20, 21, 22},
-	{42, 26, 27, 28, 29, 30, 31},
-	{39},
-	{41},
-	{40},
-	{41, 23, 24, 25},
-	{41, 23, 24, 25},
-	{41, 23, 24, 25},
-	{41, 23, 24, 25},
-	{39},
-}
-
 const tileWidth = 5 * 8
 const tileHeight = 3 * 8
-
-func consolidatePalbank(palbanks []color.Palette, tilePaletteses [][]int) (color.Palette, map[int]int) {
-	var consolidated color.Palette
-	m := map[int]int{}
-	consolidated = append(consolidated, palbanks[tilePaletteses[0][0]][:7]...)
-	for _, tilePalettes := range tilePaletteses {
-		for _, paletteIdx := range tilePalettes {
-			if _, ok := m[paletteIdx]; !ok {
-				m[paletteIdx] = len(consolidated)
-				consolidated = append(consolidated, palbanks[paletteIdx][7:]...)
-			}
-		}
-	}
-	return consolidated, m
-}
 
 func main() {
 	flag.Parse()
@@ -207,58 +55,15 @@ func main() {
 
 	os.Mkdir("tiles", 0o700)
 
-	if _, err := f.Seek(paletteOffsetPtr, os.SEEK_SET); err != nil {
+	palbanks, err := battletiles.ReadPalbanks(f)
+	if err != nil {
 		log.Fatalf("%s", err)
 	}
 
-	var palettePtr uint32
-	if err := binary.Read(f, binary.LittleEndian, &palettePtr); err != nil {
-		log.Fatalf("%s", err)
-	}
+	redPal, m := battletiles.ConsolidatePalbank(palbanks, battletiles.RedTileByIndex)
+	bluePal, _ := battletiles.ConsolidatePalbank(palbanks, battletiles.BlueTileByIndex)
 
-	if _, err := f.Seek(int64(palettePtr & ^uint32(0x08000000)), os.SEEK_SET); err != nil {
-		log.Fatalf("%s", err)
-	}
-
-	var palbanks []color.Palette
-	for i := 0; i < 45; i++ {
-		var raw [16 * 2]byte
-		if _, err := io.ReadFull(f, raw[:]); err != nil {
-			log.Fatalf("%s", err)
-		}
-
-		var palette color.Palette
-		palR := bytes.NewBuffer(raw[:])
-		for j := 0; j < 16; j++ {
-			var c uint16
-			if err := binary.Read(palR, binary.LittleEndian, &c); err != nil {
-				log.Fatalf("%s", err)
-			}
-
-			palette = append(palette, bgr555.ToRGBA(c))
-		}
-		palette[0] = color.RGBA{}
-
-		palbanks = append(palbanks, palette)
-	}
-
-	redPal, m := consolidatePalbank(palbanks, redTileByIndex)
-	bluePal, _ := consolidatePalbank(palbanks, blueTileByIndex)
-
-	if _, err := f.Seek(tilesOffsetPtr, os.SEEK_SET); err != nil {
-		log.Fatalf("%s", err)
-	}
-
-	var tilesPtr uint32
-	if err := binary.Read(f, binary.LittleEndian, &tilesPtr); err != nil {
-		log.Fatalf("%s", err)
-	}
-
-	if _, err := f.Seek(int64(tilesPtr & ^uint32(0x08000000)), os.SEEK_SET); err != nil {
-		log.Fatalf("%s", err)
-	}
-
-	rawTiles, err := lz77.Decompress(f)
+	tiles, err := battletiles.ReadTiles(f)
 	if err != nil {
 		log.Fatalf("%s", err)
 	}
@@ -266,44 +71,14 @@ func main() {
 	img := image.NewPaletted(image.Rect(0, 0, 9*tileWidth, 200*tileHeight), nil)
 
 	idx := 0
-	for j, tg := range tileGroups {
-		for _, pIndex := range redTileByIndex[j/3] {
-			offset := m[pIndex]
+	for j, tileImg := range tiles {
+		for _, pIndex := range battletiles.RedTileByIndex[j/3] {
+			tileImgCopy := battletiles.ShiftPalette(tileImg, m[pIndex])
 
-			for i, tIndex := range tg {
-				flipH := false
-				if tIndex < 0 {
-					flipH = true
-					tIndex = -tIndex
-				}
-				tIndex--
+			x := (idx % 9) * tileWidth
+			y := (idx / 9) * tileHeight
 
-				tileImg, err := sprites.ReadTile(bytes.NewBuffer(rawTiles[tIndex*8*8/2 : (tIndex+1)*8*8/2]))
-				if err != nil {
-					log.Fatalf("%s", err)
-				}
-
-				if flipH {
-					paletted.FlipHorizontal(tileImg)
-				}
-
-				tileImgCopy := image.NewPaletted(tileImg.Rect, nil)
-
-				for i, pix := range tileImg.Pix {
-					if pix >= 7 {
-						pix = pix - 7 + uint8(offset)
-					}
-					tileImgCopy.Pix[i] = pix
-				}
-
-				xIdx := idx % 9
-				yIdx := idx / 9
-
-				x := (i%5)*8 + xIdx*tileWidth
-				y := (i/5)*8 + yIdx*tileHeight
-
-				paletted.DrawOver(img, image.Rect(x, y, x+8, y+8), tileImgCopy, image.Point{})
-			}
+			paletted.DrawOver(img, image.Rect(x, y, x+tileWidth, y+tileHeight), tileImgCopy, image.Point{})
 			idx++
 		}
 	}
@@ -353,7 +128,7 @@ func main() {
 			// Pack metadata in here.
 			{
 				var buf bytes.Buffer
-				buf.WriteString("blue")
+				buf.WriteString("alt")
 				buf.WriteByte('\x00')
 				buf.WriteByte('\x08')
 				for _, c := range bluePal {
@@ -371,41 +146,36 @@ func main() {
 				buf.WriteString("fctrl")
 				buf.WriteByte('\x00')
 				buf.WriteByte('\xff')
-				tileIdx := 0
-				for k, tiles := range redTileByIndex {
-					for j := 0; j < 3; j++ {
-						for i := 0; i < len(tiles); i++ {
-							action := uint8(0)
-							if i == len(tiles)-1 {
-								action = 0x01
-							}
-
-							x := (tileIdx % 9) * tileWidth
-							y := (tileIdx / 9) * tileHeight
-
-							binary.Write(&buf, binary.LittleEndian, struct {
-								Left    int16
-								Top     int16
-								Right   int16
-								Bottom  int16
-								OriginX int16
-								OriginY int16
-								Delay   uint8
-								Action  uint8
-							}{
-								int16(x),
-								int16(y),
-								int16(x + tileWidth),
-								int16(y + tileHeight),
-								int16(0),
-								int16(0),
-								uint8(frameTimes[k]),
-								action,
-							})
-
-							tileIdx++
-						}
+				for tileIdx, fi := range battletiles.FrameInfos {
+					action := uint8(0)
+					if fi.IsEnd {
+						action = 0x01
 					}
+
+					x := (tileIdx % 9) * tileWidth
+					y := (tileIdx / 9) * tileHeight
+
+					binary.Write(&buf, binary.LittleEndian, struct {
+						Left    int16
+						Top     int16
+						Right   int16
+						Bottom  int16
+						OriginX int16
+						OriginY int16
+						Delay   uint8
+						Action  uint8
+					}{
+						int16(x),
+						int16(y),
+						int16(x + tileWidth),
+						int16(y + tileHeight),
+						int16(0),
+						int16(0),
+						uint8(fi.Delay),
+						action,
+					})
+
+					tileIdx++
 				}
 				if err := pngw.WriteChunk(int32(buf.Len()), "zTXt", bytes.NewBuffer(buf.Bytes())); err != nil {
 					log.Fatalf("%s", err)
