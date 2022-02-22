@@ -113,8 +113,8 @@ var tileGroups = [][]int{
 	{491, 492, 493, -492, -491},
 }
 
-const tileWidth = 5 * 8
-const tileHeight = 3 * 8
+const Width = 5 * 8
+const Height = 3 * 8
 
 func ReadTiles(r io.ReadSeeker) ([]*image.Paletted, error) {
 	if _, err := r.Seek(tilesOffsetPtr, os.SEEK_SET); err != nil {
@@ -137,7 +137,7 @@ func ReadTiles(r io.ReadSeeker) ([]*image.Paletted, error) {
 
 	tiles := make([]*image.Paletted, len(tileGroups))
 	for j, tg := range tileGroups {
-		tiles[j] = image.NewPaletted(image.Rect(0, 0, tileWidth, tileHeight), nil)
+		tiles[j] = image.NewPaletted(image.Rect(0, 0, Width, Height), nil)
 
 		for i, tIndex := range tg {
 			flipH := false

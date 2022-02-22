@@ -196,7 +196,7 @@ func dumpSheets(r io.ReadSeeker, outFn string) error {
 
 	info := sprites.FindROMInfo(romID)
 	if info == nil {
-		log.Fatalf("unsupported game")
+		return errors.New("unsupported game")
 	}
 
 	if _, err := r.Seek(info.Offset, os.SEEK_SET); err != nil {

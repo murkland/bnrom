@@ -42,5 +42,12 @@ func main() {
 		log.Fatalf("%s", err)
 	}
 
+	chipsOutFn := *outputDir + "/chips"
+	chipIconsOutFn := *outputDir + "/chip-icons"
+	log.Printf("Dumping chips: %s + %s", chipsOutFn, chipIconsOutFn)
+	if err := dumpChips(f, chipsOutFn, chipIconsOutFn); err != nil {
+		log.Fatalf("%s", err)
+	}
+
 	log.Printf("Done!")
 }

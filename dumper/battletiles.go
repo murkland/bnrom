@@ -16,9 +16,6 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-const tileWidth = 5 * 8
-const tileHeight = 3 * 8
-
 func dumpBattleTiles(r io.ReadSeeker, outFn string) error {
 	palbanks, err := battletiles.ReadPalbanks(r)
 	if err != nil {
@@ -33,17 +30,17 @@ func dumpBattleTiles(r io.ReadSeeker, outFn string) error {
 		return err
 	}
 
-	img := image.NewPaletted(image.Rect(0, 0, 9*tileWidth, 200*tileHeight), nil)
+	img := image.NewPaletted(image.Rect(0, 0, 9*battletiles.Width, 200*battletiles.Height), nil)
 
 	idx := 0
 	for j, tileImg := range tiles {
 		for _, pIndex := range battletiles.RedTileByIndex[j/3] {
 			tileImgCopy := battletiles.ShiftPalette(tileImg, m[pIndex])
 
-			x := (idx % 9) * tileWidth
-			y := (idx / 9) * tileHeight
+			x := (idx % 9) * battletiles.Width
+			y := (idx / 9) * battletiles.Height
 
-			paletted.DrawOver(img, image.Rect(x, y, x+tileWidth, y+tileHeight), tileImgCopy, image.Point{})
+			paletted.DrawOver(img, image.Rect(x, y, x+battletiles.Width, y+battletiles.Height), tileImgCopy, image.Point{})
 			idx++
 		}
 	}
@@ -117,8 +114,8 @@ func dumpBattleTiles(r io.ReadSeeker, outFn string) error {
 						action = 0x01
 					}
 
-					x := (tileIdx % 9) * tileWidth
-					y := (tileIdx / 9) * tileHeight
+					x := (tileIdx % 9) * battletiles.Width
+					y := (tileIdx / 9) * battletiles.Height
 
 					binary.Write(&buf, binary.LittleEndian, struct {
 						Left    int16
@@ -132,8 +129,8 @@ func dumpBattleTiles(r io.ReadSeeker, outFn string) error {
 					}{
 						int16(x),
 						int16(y),
-						int16(x + tileWidth),
-						int16(y + tileHeight),
+						int16(x + battletiles.Width),
+						int16(y + battletiles.Height),
 						int16(0),
 						int16(0),
 						uint8(fi.Delay),
