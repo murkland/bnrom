@@ -19,29 +19,6 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-const (
-	poisonFrameTime = 16
-	holyFrameTime   = 10
-	roadFrameTime   = 8
-)
-
-var frameTimes = []int{
-	1,
-	1,
-	1,
-	1,
-	poisonFrameTime,
-	holyFrameTime,
-	1,
-	1,
-	1,
-	roadFrameTime,
-	roadFrameTime,
-	roadFrameTime,
-	roadFrameTime,
-	1,
-}
-
 const tileWidth = 5 * 8
 const tileHeight = 3 * 8
 
