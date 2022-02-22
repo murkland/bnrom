@@ -104,6 +104,7 @@ func processOneSheet(outFn string, idx int, anims []sprites.Animation) error {
 		return err
 	}
 
+	var metaWritten bool
 	for {
 		chunk, err := pngr.NextChunk()
 		if err != nil {
@@ -112,7 +113,7 @@ func processOneSheet(outFn string, idx int, anims []sprites.Animation) error {
 			}
 		}
 
-		if chunk.Type() == "IDAT" {
+		if chunk.Type() == "IDAT" && !metaWritten {
 			// Pack metadata in here.
 			if len(fullPalette) > 256 {
 				var buf bytes.Buffer

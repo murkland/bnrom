@@ -85,6 +85,7 @@ func dumpBattletiles(r io.ReadSeeker, outFn string) error {
 		return err
 	}
 
+	var metaWritten bool
 	for {
 		chunk, err := pngr.NextChunk()
 		if err != nil {
@@ -93,7 +94,7 @@ func dumpBattletiles(r io.ReadSeeker, outFn string) error {
 			}
 		}
 
-		if chunk.Type() == "IDAT" {
+		if chunk.Type() == "IDAT" && !metaWritten {
 			// Pack metadata in here.
 			{
 				var buf bytes.Buffer

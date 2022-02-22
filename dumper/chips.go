@@ -119,6 +119,7 @@ func dumpChips(r io.ReadSeeker, chipsOutFn string, iconsOutFn string) error {
 			return err
 		}
 
+		var metaWritten bool
 		for {
 			chunk, err := pngr.NextChunk()
 			if err != nil {
@@ -127,11 +128,8 @@ func dumpChips(r io.ReadSeeker, chipsOutFn string, iconsOutFn string) error {
 				}
 			}
 
-			if err := pngw.WriteChunk(chunk.Length(), chunk.Type(), chunk); err != nil {
-				return err
-			}
-
-			if chunk.Type() == "tRNS" {
+			if chunk.Type() == "IDAT" && !metaWritten {
+				metaWritten = true
 				// Pack metadata in here.
 				{
 					var buf bytes.Buffer
@@ -157,6 +155,10 @@ func dumpChips(r io.ReadSeeker, chipsOutFn string, iconsOutFn string) error {
 						return err
 					}
 				}
+			}
+
+			if err := pngw.WriteChunk(chunk.Length(), chunk.Type(), chunk); err != nil {
+				return err
 			}
 
 			if err := chunk.Close(); err != nil {
@@ -202,6 +204,7 @@ func dumpChips(r io.ReadSeeker, chipsOutFn string, iconsOutFn string) error {
 			return err
 		}
 
+		var metaWritten bool
 		for {
 			chunk, err := pngr.NextChunk()
 			if err != nil {
@@ -210,7 +213,8 @@ func dumpChips(r io.ReadSeeker, chipsOutFn string, iconsOutFn string) error {
 				}
 			}
 
-			if chunk.Type() == "IDAT" {
+			if chunk.Type() == "IDAT" && !metaWritten {
+				metaWritten = true
 				// Pack metadata in here.
 				{
 					var buf bytes.Buffer
