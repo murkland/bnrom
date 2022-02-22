@@ -15,6 +15,17 @@ var (
 	dumpChipsF       = flag.Bool("dump_chips", true, "dump chips")
 )
 
+type fctrlFrameInfo struct {
+	Left    int16
+	Top     int16
+	Right   int16
+	Bottom  int16
+	OriginX int16
+	OriginY int16
+	Delay   uint8
+	Action  uint8
+}
+
 func main() {
 	flag.Parse()
 

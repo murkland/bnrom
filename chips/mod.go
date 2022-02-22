@@ -46,7 +46,7 @@ func FindROMInfo(romID string) *ROMInfo {
 	case "BR6E", "BR6P", "BR5E", "BR5P":
 		return &ROMInfo{0x00021DD4, 410, 0x000270C4}
 	case "BR6J", "BR5J":
-		return &ROMInfo{0x00022214, 409, 0x000274D8}
+		return &ROMInfo{0x000221E8, 410, 0x000274D8}
 	}
 	return nil
 }

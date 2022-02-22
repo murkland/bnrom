@@ -1,19 +1,22 @@
 package main
 
 import (
+	"bytes"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"image"
 	"image/draw"
 	"image/png"
 	"io"
-	"log"
 	"os"
 
 	"github.com/schollz/progressbar/v3"
 	"github.com/yumland/bnrom/chips"
 	"github.com/yumland/bnrom/paletted"
 	"github.com/yumland/gbarom"
+	"github.com/yumland/pngchunks"
+	"golang.org/x/sync/errgroup"
 )
 
 func dumpChips(r io.ReadSeeker, chipsOutFn string, iconsOutFn string) error {
@@ -87,26 +90,171 @@ func dumpChips(r io.ReadSeeker, chipsOutFn string, iconsOutFn string) error {
 		draw.Draw(img, image.Rect(x*chips.Width, y*chips.Height, (x+1)*chips.Width, (y+1)*chips.Height), chipImg, image.Point{}, draw.Over)
 	}
 
-	{
-		outf, err := os.Create(chipsOutFn)
+	if err := func() error {
+		f, err := os.Create(chipsOutFn)
 		if err != nil {
-			log.Fatalf("%s", err)
+			return err
+		}
+		defer f.Close()
+
+		pipeR, pipeW := io.Pipe()
+
+		var g errgroup.Group
+
+		g.Go(func() error {
+			defer pipeW.Close()
+			if err := png.Encode(pipeW, img); err != nil {
+				return err
+			}
+			return nil
+		})
+
+		pngr, err := pngchunks.NewReader(pipeR)
+		if err != nil {
+			return err
 		}
 
-		if err := png.Encode(outf, img); err != nil {
-			log.Fatalf("%s", err)
+		pngw, err := pngchunks.NewWriter(f)
+		if err != nil {
+			return err
 		}
+
+		for {
+			chunk, err := pngr.NextChunk()
+			if err != nil {
+				if errors.Is(err, io.EOF) {
+					break
+				}
+			}
+
+			if err := pngw.WriteChunk(chunk.Length(), chunk.Type(), chunk); err != nil {
+				return err
+			}
+
+			if chunk.Type() == "tRNS" {
+				// Pack metadata in here.
+				{
+					var buf bytes.Buffer
+					buf.WriteString("fctrl")
+					buf.WriteByte('\x00')
+					buf.WriteByte('\xff')
+					for i := 0; i < len(chipInfos); i++ {
+						x := i % 10
+						y := i / 10
+
+						binary.Write(&buf, binary.LittleEndian, fctrlFrameInfo{
+							int16(x * chips.Width),
+							int16(y * chips.Height),
+							int16((x + 1) * chips.Width),
+							int16((y + 1) * chips.Height),
+							int16(0),
+							int16(0),
+							uint8(1),
+							2,
+						})
+					}
+					if err := pngw.WriteChunk(int32(buf.Len()), "zTXt", bytes.NewBuffer(buf.Bytes())); err != nil {
+						return err
+					}
+				}
+			}
+
+			if err := chunk.Close(); err != nil {
+				return err
+			}
+		}
+
+		if err := g.Wait(); err != nil {
+			return err
+		}
+
+		return nil
+	}(); err != nil {
+		return err
 	}
 
-	{
-		outf, err := os.Create(iconsOutFn)
+	if err := func() error {
+		f, err := os.Create(iconsOutFn)
 		if err != nil {
-			log.Fatalf("%s", err)
+			return err
+		}
+		defer f.Close()
+
+		pipeR, pipeW := io.Pipe()
+
+		var g errgroup.Group
+
+		g.Go(func() error {
+			defer pipeW.Close()
+			if err := png.Encode(pipeW, iconsImg); err != nil {
+				return err
+			}
+			return nil
+		})
+
+		pngr, err := pngchunks.NewReader(pipeR)
+		if err != nil {
+			return err
 		}
 
-		if err := png.Encode(outf, iconsImg); err != nil {
-			log.Fatalf("%s", err)
+		pngw, err := pngchunks.NewWriter(f)
+		if err != nil {
+			return err
 		}
+
+		for {
+			chunk, err := pngr.NextChunk()
+			if err != nil {
+				if errors.Is(err, io.EOF) {
+					break
+				}
+			}
+
+			if chunk.Type() == "IDAT" {
+				// Pack metadata in here.
+				{
+					var buf bytes.Buffer
+					buf.WriteString("fctrl")
+					buf.WriteByte('\x00')
+					buf.WriteByte('\xff')
+					for i := 0; i < len(chipInfos); i++ {
+						x := i % 10
+						y := i / 10
+
+						binary.Write(&buf, binary.LittleEndian, fctrlFrameInfo{
+							int16(x * chips.IconWidth),
+							int16(y * chips.IconHeight),
+							int16((x + 1) * chips.IconWidth),
+							int16((y + 1) * chips.IconHeight),
+							int16(0),
+							int16(0),
+							uint8(1),
+							2,
+						})
+					}
+					if err := pngw.WriteChunk(int32(buf.Len()), "zTXt", bytes.NewBuffer(buf.Bytes())); err != nil {
+						return err
+					}
+				}
+			}
+
+			if err := pngw.WriteChunk(chunk.Length(), chunk.Type(), chunk); err != nil {
+				return err
+			}
+
+			if err := chunk.Close(); err != nil {
+				return err
+			}
+		}
+
+		if err := g.Wait(); err != nil {
+			return err
+		}
+
+		return nil
+	}(); err != nil {
+		return err
 	}
+
 	return nil
 }

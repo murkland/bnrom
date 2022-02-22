@@ -112,11 +112,7 @@ func processOneSheet(outFn string, idx int, anims []sprites.Animation) error {
 			}
 		}
 
-		if err := pngw.WriteChunk(chunk.Length(), chunk.Type(), chunk); err != nil {
-			return err
-		}
-
-		if chunk.Type() == "tRNS" {
+		if chunk.Type() == "IDAT" {
 			// Pack metadata in here.
 			if len(fullPalette) > 256 {
 				var buf bytes.Buffer
@@ -135,7 +131,7 @@ func processOneSheet(outFn string, idx int, anims []sprites.Animation) error {
 
 			{
 				var buf bytes.Buffer
-				buf.WriteString("sctrl")
+				buf.WriteString("fctrl")
 				buf.WriteByte('\x00')
 				buf.WriteByte('\xff')
 				for _, info := range infos {
@@ -149,16 +145,7 @@ func processOneSheet(outFn string, idx int, anims []sprites.Animation) error {
 						action = 2
 					}
 
-					binary.Write(&buf, binary.LittleEndian, struct {
-						Left    int16
-						Top     int16
-						Right   int16
-						Bottom  int16
-						OriginX int16
-						OriginY int16
-						Delay   uint8
-						Action  uint8
-					}{
+					binary.Write(&buf, binary.LittleEndian, fctrlFrameInfo{
 						int16(info.BBox.Min.X),
 						int16(info.BBox.Min.Y),
 						int16(info.BBox.Max.X),
@@ -174,6 +161,10 @@ func processOneSheet(outFn string, idx int, anims []sprites.Animation) error {
 				}
 
 			}
+		}
+
+		if err := pngw.WriteChunk(chunk.Length(), chunk.Type(), chunk); err != nil {
+			return err
 		}
 
 		if err := chunk.Close(); err != nil {
