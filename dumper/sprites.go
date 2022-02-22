@@ -188,7 +188,7 @@ func processOneSheet(outFn string, idx int, anims []sprites.Animation) error {
 	return nil
 }
 
-func dumpSheets(r io.ReadSeeker, outFn string) error {
+func dumpSprites(r io.ReadSeeker, outFn string) error {
 	romID, err := gbarom.ReadROMID(r)
 	if err != nil {
 		return err

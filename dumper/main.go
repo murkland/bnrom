@@ -9,7 +9,10 @@ import (
 )
 
 var (
-	outputDir = flag.String("output_dir", "out", "output directory")
+	outputDir        = flag.String("output_dir", "out", "output directory")
+	dumpSpritesF     = flag.Bool("dump_sprites", true, "dump sprites")
+	dumpBattletilesF = flag.Bool("dump_battletiles", true, "dump battletiles")
+	dumpChipsF       = flag.Bool("dump_chips", true, "dump chips")
 )
 
 func main() {
@@ -30,23 +33,29 @@ func main() {
 
 	log.Printf("Game title: %s", romTitle)
 
-	spritesOutFn := *outputDir + "/sprites"
-	log.Printf("Dumping sprites: %s", spritesOutFn)
-	if err := dumpSheets(f, spritesOutFn); err != nil {
-		log.Fatalf("%s", err)
+	if *dumpSpritesF {
+		spritesOutFn := *outputDir + "/sprites"
+		log.Printf("Dumping sprites: %s", spritesOutFn)
+		if err := dumpSprites(f, spritesOutFn); err != nil {
+			log.Fatalf("%s", err)
+		}
 	}
 
-	tilesOutFn := *outputDir + "/tiles.png"
-	log.Printf("Dumping tiles: %s", tilesOutFn)
-	if err := dumpBattleTiles(f, tilesOutFn); err != nil {
-		log.Fatalf("%s", err)
+	if *dumpBattletilesF {
+		tilesOutFn := *outputDir + "/battletiles.png"
+		log.Printf("Dumping battletiles: %s", tilesOutFn)
+		if err := dumpBattletiles(f, tilesOutFn); err != nil {
+			log.Fatalf("%s", err)
+		}
 	}
 
-	chipsOutFn := *outputDir + "/chips"
-	chipIconsOutFn := *outputDir + "/chip-icons"
-	log.Printf("Dumping chips: %s + %s", chipsOutFn, chipIconsOutFn)
-	if err := dumpChips(f, chipsOutFn, chipIconsOutFn); err != nil {
-		log.Fatalf("%s", err)
+	if *dumpChipsF {
+		chipsOutFn := *outputDir + "/chips"
+		chipIconsOutFn := *outputDir + "/chip-icons"
+		log.Printf("Dumping chips: %s + %s", chipsOutFn, chipIconsOutFn)
+		if err := dumpChips(f, chipsOutFn, chipIconsOutFn); err != nil {
+			log.Fatalf("%s", err)
+		}
 	}
 
 	log.Printf("Done!")

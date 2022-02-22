@@ -116,8 +116,8 @@ var tileGroups = [][]int{
 const Width = 5 * 8
 const Height = 3 * 8
 
-func ReadTiles(r io.ReadSeeker) ([]*image.Paletted, error) {
-	if _, err := r.Seek(tilesOffsetPtr, os.SEEK_SET); err != nil {
+func ReadTiles(r io.ReadSeeker, ri ROMInfo) ([]*image.Paletted, error) {
+	if _, err := r.Seek(ri.TilesOffset, os.SEEK_SET); err != nil {
 		return nil, fmt.Errorf("%w while seeking to tile offset pointer", err)
 	}
 

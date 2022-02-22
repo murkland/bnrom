@@ -12,12 +12,23 @@ import (
 
 	"github.com/yumland/bnrom/battletiles"
 	"github.com/yumland/bnrom/paletted"
+	"github.com/yumland/gbarom"
 	"github.com/yumland/pngchunks"
 	"golang.org/x/sync/errgroup"
 )
 
-func dumpBattleTiles(r io.ReadSeeker, outFn string) error {
-	palbanks, err := battletiles.ReadPalbanks(r)
+func dumpBattletiles(r io.ReadSeeker, outFn string) error {
+	romID, err := gbarom.ReadROMID(r)
+	if err != nil {
+		return err
+	}
+
+	info := battletiles.FindROMInfo(romID)
+	if info == nil {
+		return errors.New("unsupported game")
+	}
+
+	palbanks, err := battletiles.ReadPalbanks(r, *info)
 	if err != nil {
 		return err
 	}
@@ -25,7 +36,7 @@ func dumpBattleTiles(r io.ReadSeeker, outFn string) error {
 	redPal, m := battletiles.ConsolidatePalbank(palbanks, battletiles.RedTileByIndex)
 	bluePal, _ := battletiles.ConsolidatePalbank(palbanks, battletiles.BlueTileByIndex)
 
-	tiles, err := battletiles.ReadTiles(r)
+	tiles, err := battletiles.ReadTiles(r, *info)
 	if err != nil {
 		return err
 	}

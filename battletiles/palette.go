@@ -49,8 +49,8 @@ var BlueTileByIndex = [][]int{
 	{39},
 }
 
-func ReadPalbanks(r io.ReadSeeker) ([]color.Palette, error) {
-	if _, err := r.Seek(paletteOffsetPtr, os.SEEK_SET); err != nil {
+func ReadPalbanks(r io.ReadSeeker, ri ROMInfo) ([]color.Palette, error) {
+	if _, err := r.Seek(ri.PalOffset, os.SEEK_SET); err != nil {
 		return nil, fmt.Errorf("%w while seeking to palette offset pointer", err)
 	}
 
