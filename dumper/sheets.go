@@ -4,14 +4,12 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
-	"flag"
 	"fmt"
 	"image"
 	"image/color"
 	"image/draw"
 	"image/png"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"runtime"
@@ -24,18 +22,18 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-type FrameInfo struct {
-	BBox   image.Rectangle
-	Origin image.Point
-	Delay  int
-	Action sprites.FrameAction
-}
+func processOneSheet(outFn string, idx int, anims []sprites.Animation) error {
+	type frameInfo struct {
+		BBox   image.Rectangle
+		Origin image.Point
+		Delay  int
+		Action sprites.FrameAction
+	}
 
-func processOne(idx int, anims []sprites.Animation) error {
 	left := 0
 	top := 0
 
-	var infos []FrameInfo
+	var infos []frameInfo
 	var fullPalette color.Palette
 	spriteImg := image.NewPaletted(image.Rect(0, 0, 2048, 2048), nil)
 
@@ -43,17 +41,17 @@ func processOne(idx int, anims []sprites.Animation) error {
 		for _, frame := range anim.Frames {
 			fullPalette = frame.Palette
 
-			var frameInfo FrameInfo
-			frameInfo.Delay = int(frame.Delay)
-			frameInfo.Action = frame.Action
+			var fi frameInfo
+			fi.Delay = int(frame.Delay)
+			fi.Action = frame.Action
 
 			img := frame.MakeImage()
 			spriteImg.Palette = img.Palette
 
 			trimBbox := paletted.FindTrim(img)
 
-			frameInfo.Origin.X = img.Rect.Dx()/2 - trimBbox.Min.X
-			frameInfo.Origin.Y = img.Rect.Dy()/2 - trimBbox.Min.Y
+			fi.Origin.X = img.Rect.Dx()/2 - trimBbox.Min.X
+			fi.Origin.Y = img.Rect.Dy()/2 - trimBbox.Min.Y
 
 			if left+trimBbox.Dx() > spriteImg.Rect.Dx() {
 				left = 0
@@ -61,10 +59,10 @@ func processOne(idx int, anims []sprites.Animation) error {
 				top++
 			}
 
-			frameInfo.BBox = image.Rectangle{image.Point{left, top}, image.Point{left + trimBbox.Dx(), top + trimBbox.Dy()}}
+			fi.BBox = image.Rectangle{image.Point{left, top}, image.Point{left + trimBbox.Dx(), top + trimBbox.Dy()}}
 
-			draw.Draw(spriteImg, frameInfo.BBox, img, trimBbox.Min, draw.Over)
-			infos = append(infos, frameInfo)
+			draw.Draw(spriteImg, fi.BBox, img, trimBbox.Min, draw.Over)
+			infos = append(infos, fi)
 
 			left += trimBbox.Dx() + 1
 		}
@@ -78,25 +76,25 @@ func processOne(idx int, anims []sprites.Animation) error {
 	if subimg.Bounds().Dx() == 0 || subimg.Bounds().Dy() == 0 {
 		return nil
 	}
-	f, err := os.Create(fmt.Sprintf("sprites/%04d.png", idx))
+	f, err := os.Create(fmt.Sprintf("%s/%04d.png", outFn, idx))
 	if err != nil {
 		return err
 	}
 	defer f.Close()
 
-	r, w := io.Pipe()
+	pipeR, pipeW := io.Pipe()
 
 	var g errgroup.Group
 
 	g.Go(func() error {
-		defer w.Close()
-		if err := png.Encode(w, subimg); err != nil {
+		defer pipeW.Close()
+		if err := png.Encode(pipeW, subimg); err != nil {
 			return err
 		}
 		return nil
 	})
 
-	pngr, err := pngchunks.NewReader(r)
+	pngr, err := pngchunks.NewReader(pipeR)
 	if err != nil {
 		return err
 	}
@@ -190,31 +188,10 @@ func processOne(idx int, anims []sprites.Animation) error {
 	return nil
 }
 
-func main() {
-	flag.Parse()
-
-	f, err := os.Open(flag.Arg(0))
+func dumpSheets(r io.ReadSeeker, outFn string) error {
+	romID, err := gbarom.ReadROMID(r)
 	if err != nil {
-		log.Fatalf("%s", err)
-	}
-
-	buf, err := ioutil.ReadAll(f)
-	if err != nil {
-		log.Fatalf("%s", err)
-	}
-
-	r := bytes.NewReader(buf)
-
-	romTitle, err := gbarom.ReadROMTitle(r)
-	if err != nil {
-		log.Fatalf("%s", err)
-	}
-
-	log.Printf("Game title: %s", romTitle)
-
-	romID, err := gbarom.ReadROMID(f)
-	if err != nil {
-		log.Fatalf("%s", err)
+		return err
 	}
 
 	info := sprites.FindROMInfo(romID)
@@ -223,7 +200,7 @@ func main() {
 	}
 
 	if _, err := r.Seek(info.Offset, os.SEEK_SET); err != nil {
-		log.Fatalf("%s", err)
+		return err
 	}
 
 	s := make([][]sprites.Animation, 0, info.Count)
@@ -241,7 +218,7 @@ func main() {
 		s = append(s, anims)
 	}
 
-	os.Mkdir("sprites", 0o700)
+	os.Mkdir(outFn, 0o700)
 
 	bar2 := progressbar.Default(int64(len(s)))
 	bar2.Describe("dump")
@@ -258,7 +235,7 @@ func main() {
 			for w := range ch {
 				bar2.Add(1)
 				bar2.Describe(fmt.Sprintf("dump: %04d", w.idx))
-				if err := processOne(w.idx, w.anims); err != nil {
+				if err := processOneSheet(outFn, w.idx, w.anims); err != nil {
 					return err
 				}
 			}
@@ -272,6 +249,8 @@ func main() {
 	close(ch)
 
 	if err := g.Wait(); err != nil {
-		log.Fatalf("%s", err)
+		return err
 	}
+
+	return nil
 }

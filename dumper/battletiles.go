@@ -4,13 +4,10 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
-	"flag"
-	"fmt"
 	"image"
 	"image/color"
 	"image/png"
 	"io"
-	"log"
 	"os"
 
 	"github.com/yumland/bnrom/battletiles"
@@ -22,27 +19,18 @@ import (
 const tileWidth = 5 * 8
 const tileHeight = 3 * 8
 
-func main() {
-	flag.Parse()
-
-	f, err := os.Open(flag.Arg(0))
+func dumpBattleTiles(r io.ReadSeeker, outFn string) error {
+	palbanks, err := battletiles.ReadPalbanks(r)
 	if err != nil {
-		log.Fatalf("%s", err)
-	}
-
-	os.Mkdir("tiles", 0o700)
-
-	palbanks, err := battletiles.ReadPalbanks(f)
-	if err != nil {
-		log.Fatalf("%s", err)
+		return err
 	}
 
 	redPal, m := battletiles.ConsolidatePalbank(palbanks, battletiles.RedTileByIndex)
 	bluePal, _ := battletiles.ConsolidatePalbank(palbanks, battletiles.BlueTileByIndex)
 
-	tiles, err := battletiles.ReadTiles(f)
+	tiles, err := battletiles.ReadTiles(r)
 	if err != nil {
-		log.Fatalf("%s", err)
+		return err
 	}
 
 	img := image.NewPaletted(image.Rect(0, 0, 9*tileWidth, 200*tileHeight), nil)
@@ -62,31 +50,31 @@ func main() {
 	img = img.SubImage(paletted.FindTrim(img)).(*image.Paletted)
 
 	img.Palette = redPal
-	outf, err := os.Create(fmt.Sprintf("tiles.png"))
+	outf, err := os.Create(outFn)
 	if err != nil {
-		log.Fatalf("%s", err)
+		return err
 	}
 
-	r, w := io.Pipe()
+	pipeR, pipeW := io.Pipe()
 
 	var g errgroup.Group
 
 	g.Go(func() error {
-		defer w.Close()
-		if err := png.Encode(w, img); err != nil {
+		defer pipeW.Close()
+		if err := png.Encode(pipeW, img); err != nil {
 			return err
 		}
 		return nil
 	})
 
-	pngr, err := pngchunks.NewReader(r)
+	pngr, err := pngchunks.NewReader(pipeR)
 	if err != nil {
-		log.Fatalf("%s", err)
+		return err
 	}
 
 	pngw, err := pngchunks.NewWriter(outf)
 	if err != nil {
-		log.Fatalf("%s", err)
+		return err
 	}
 
 	for {
@@ -98,7 +86,7 @@ func main() {
 		}
 
 		if err := pngw.WriteChunk(chunk.Length(), chunk.Type(), chunk); err != nil {
-			log.Fatalf("%s", err)
+			return err
 		}
 
 		if chunk.Type() == "tRNS" {
@@ -114,7 +102,7 @@ func main() {
 					buf.WriteByte('\xff')
 				}
 				if err := pngw.WriteChunk(int32(buf.Len()), "sPLT", bytes.NewBuffer(buf.Bytes())); err != nil {
-					log.Fatalf("%s", err)
+					return err
 				}
 			}
 
@@ -155,18 +143,19 @@ func main() {
 					tileIdx++
 				}
 				if err := pngw.WriteChunk(int32(buf.Len()), "zTXt", bytes.NewBuffer(buf.Bytes())); err != nil {
-					log.Fatalf("%s", err)
+					return err
 				}
 			}
 		}
 
 		if err := chunk.Close(); err != nil {
-			log.Fatalf("%s", err)
+			return err
 		}
 	}
 
 	if err := g.Wait(); err != nil {
-		log.Fatalf("%s", err)
+		return err
 	}
 
+	return nil
 }
