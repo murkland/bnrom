@@ -3,6 +3,8 @@ package main
 import (
 	"errors"
 	"fmt"
+	"image"
+	"image/draw"
 	"image/png"
 	"io"
 	"log"
@@ -10,6 +12,7 @@ import (
 
 	"github.com/schollz/progressbar/v3"
 	"github.com/yumland/bnrom/chips"
+	"github.com/yumland/bnrom/paletted"
 	"github.com/yumland/gbarom"
 )
 
@@ -32,9 +35,6 @@ func dumpChips(r io.ReadSeeker, chipsOutFn string, iconsOutFn string) error {
 	if _, err := r.Seek(info.Offset, os.SEEK_SET); err != nil {
 		return err
 	}
-
-	os.Mkdir(chipsOutFn, 0o700)
-	os.Mkdir(iconsOutFn, 0o700)
 
 	chipInfos := make([]chips.ChipInfo, info.Count)
 
@@ -59,6 +59,12 @@ func dumpChips(r io.ReadSeeker, chipsOutFn string, iconsOutFn string) error {
 
 	bar2 := progressbar.Default(int64(len(chipInfos)))
 	bar2.Describe("dump")
+
+	numRows := (len(chipInfos) + 10 - 1) / 10
+
+	img := image.NewRGBA(image.Rect(0, 0, chips.Width*10, chips.Height*numRows))
+	iconsImg := image.NewPaletted(image.Rect(0, 0, chips.IconWidth*10, chips.IconHeight*numRows), iconPalette)
+
 	for i, ci := range chipInfos {
 		bar2.Add(1)
 		bar2.Describe(fmt.Sprintf("dump: %04d", i))
@@ -67,33 +73,39 @@ func dumpChips(r io.ReadSeeker, chipsOutFn string, iconsOutFn string) error {
 		if err != nil {
 			return err
 		}
-		chipIconImg.Palette = iconPalette
+
+		x := i % 10
+		y := i / 10
+
+		paletted.DrawOver(iconsImg, image.Rect(x*chips.IconWidth, y*chips.IconHeight, (x+1)*chips.IconWidth, (y+1)*chips.IconHeight), chipIconImg, image.Point{})
 
 		chipImg, err := chips.ReadChipImage(r, ci, ereaderGigaPalette)
 		if err != nil {
 			return err
 		}
 
-		{
-			outf, err := os.Create(fmt.Sprintf(chipsOutFn+"/%03d.png", i))
-			if err != nil {
-				log.Fatalf("%s", err)
-			}
+		draw.Draw(img, image.Rect(x*chips.Width, y*chips.Height, (x+1)*chips.Width, (y+1)*chips.Height), chipImg, image.Point{}, draw.Over)
+	}
 
-			if err := png.Encode(outf, chipImg); err != nil {
-				log.Fatalf("%s", err)
-			}
+	{
+		outf, err := os.Create(chipsOutFn)
+		if err != nil {
+			log.Fatalf("%s", err)
 		}
 
-		{
-			outf, err := os.Create(fmt.Sprintf(iconsOutFn+"/%03d.png", i))
-			if err != nil {
-				log.Fatalf("%s", err)
-			}
+		if err := png.Encode(outf, img); err != nil {
+			log.Fatalf("%s", err)
+		}
+	}
 
-			if err := png.Encode(outf, chipIconImg); err != nil {
-				log.Fatalf("%s", err)
-			}
+	{
+		outf, err := os.Create(iconsOutFn)
+		if err != nil {
+			log.Fatalf("%s", err)
+		}
+
+		if err := png.Encode(outf, iconsImg); err != nil {
+			log.Fatalf("%s", err)
 		}
 	}
 	return nil

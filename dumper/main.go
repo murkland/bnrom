@@ -50,8 +50,8 @@ func main() {
 	}
 
 	if *dumpChipsF {
-		chipsOutFn := *outputDir + "/chips"
-		chipIconsOutFn := *outputDir + "/chip-icons"
+		chipsOutFn := *outputDir + "/chips.png"
+		chipIconsOutFn := *outputDir + "/chipicons.png"
 		log.Printf("Dumping chips: %s + %s", chipsOutFn, chipIconsOutFn)
 		if err := dumpChips(f, chipsOutFn, chipIconsOutFn); err != nil {
 			log.Fatalf("%s", err)
