@@ -9,7 +9,6 @@ import (
 )
 
 var (
-	outputDir        = flag.String("output_dir", "out", "output directory")
 	dumpSpritesF     = flag.Bool("dump_sprites", true, "dump sprites")
 	dumpBattletilesF = flag.Bool("dump_battletiles", true, "dump battletiles")
 	dumpChipsF       = flag.Bool("dump_chips", true, "dump chips")
@@ -35,8 +34,6 @@ func main() {
 	}
 	defer f.Close()
 
-	os.Mkdir(*outputDir, 0o700)
-
 	romTitle, err := gbarom.ReadROMTitle(f)
 	if err != nil {
 		log.Fatalf("%s", err)
@@ -45,26 +42,22 @@ func main() {
 	log.Printf("Game title: %s", romTitle)
 
 	if *dumpSpritesF {
-		spritesOutFn := *outputDir + "/sprites"
-		log.Printf("Dumping sprites: %s", spritesOutFn)
-		if err := dumpSprites(f, spritesOutFn); err != nil {
+		log.Printf("Dumping sprites...")
+		if err := dumpSprites(f, "sprites"); err != nil {
 			log.Fatalf("%s", err)
 		}
 	}
 
 	if *dumpBattletilesF {
-		tilesOutFn := *outputDir + "/battletiles.png"
-		log.Printf("Dumping battletiles: %s", tilesOutFn)
-		if err := dumpBattletiles(f, tilesOutFn); err != nil {
+		log.Printf("Dumping battletiles...")
+		if err := dumpBattletiles(f, "battletiles.png"); err != nil {
 			log.Fatalf("%s", err)
 		}
 	}
 
 	if *dumpChipsF {
-		chipsOutFn := *outputDir + "/chips.png"
-		chipIconsOutFn := *outputDir + "/chipicons.png"
-		log.Printf("Dumping chips: %s + %s", chipsOutFn, chipIconsOutFn)
-		if err := dumpChips(f, chipsOutFn, chipIconsOutFn); err != nil {
+		log.Printf("Dumping chips...")
+		if err := dumpChips(f, "chips.png", "chipicons.png"); err != nil {
 			log.Fatalf("%s", err)
 		}
 	}
