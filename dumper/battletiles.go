@@ -142,6 +142,8 @@ func dumpBattletiles(r io.ReadSeeker, outFn string) error {
 					return err
 				}
 			}
+
+			metaWritten = true
 		}
 
 		if err := pngw.WriteChunk(chunk.Length(), chunk.Type(), chunk); err != nil {

@@ -161,6 +161,7 @@ func processOneSheet(outFn string, idx int, anims []sprites.Animation) error {
 					return err
 				}
 
+				metaWritten = true
 			}
 		}
 
