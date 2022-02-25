@@ -196,7 +196,7 @@ type FrameInfo struct {
 
 var FrameInfos = func() []FrameInfo {
 	frameInfos := make([]FrameInfo, 0, len(RedTileByIndex)*3)
-	for k, tiles := range RedTileByIndex {
+	for k, tiles := range RedTileByIndex[:len(RedTileByIndex)-1] {
 		for j := 0; j < 3; j++ {
 			for i := 0; i < len(tiles); i++ {
 				fi := FrameInfo{
@@ -207,5 +207,6 @@ var FrameInfos = func() []FrameInfo {
 			}
 		}
 	}
+	frameInfos = append(frameInfos, FrameInfo{1, true})
 	return frameInfos
 }()
