@@ -64,7 +64,9 @@ func processOneSheet(outFn string, idx int, anims []sprites.Animation) error {
 			draw.Draw(spriteImg, fi.BBox, img, trimBbox.Min, draw.Over)
 			infos = append(infos, fi)
 
-			left += trimBbox.Dx() + 1
+			if trimBbox.Dx() > 0 {
+				left += trimBbox.Dx() + 1
+			}
 		}
 	}
 
