@@ -10,10 +10,10 @@ import (
 	"io"
 	"os"
 
-	"github.com/yumland/bnrom/battletiles"
-	"github.com/yumland/bnrom/paletted"
-	"github.com/yumland/gbarom"
-	"github.com/yumland/pngchunks"
+	"github.com/murkland/bnrom/battletiles"
+	"github.com/murkland/bnrom/paletted"
+	"github.com/murkland/gbarom"
+	"github.com/murkland/pngchunks"
 	"golang.org/x/sync/errgroup"
 )
 

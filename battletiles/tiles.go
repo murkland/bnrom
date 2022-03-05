@@ -8,9 +8,9 @@ import (
 	"io"
 	"os"
 
-	"github.com/yumland/bnrom/paletted"
-	"github.com/yumland/bnrom/sprites"
-	"github.com/yumland/gbarom/lz77"
+	"github.com/murkland/bnrom/paletted"
+	"github.com/murkland/bnrom/sprites"
+	"github.com/murkland/gbarom/lz77"
 )
 
 const tilesOffsetPtr = 0x0000761C

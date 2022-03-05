@@ -10,7 +10,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/yumland/gbarom/bgr555"
+	"github.com/murkland/gbarom/bgr555"
 )
 
 const paletteOffsetPtr = 0x0000C16C

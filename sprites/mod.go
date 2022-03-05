@@ -10,9 +10,9 @@ import (
 	"io"
 	"os"
 
-	"github.com/yumland/bnrom/paletted"
-	"github.com/yumland/gbarom/bgr555"
-	"github.com/yumland/gbarom/lz77"
+	"github.com/murkland/bnrom/paletted"
+	"github.com/murkland/gbarom/bgr555"
+	"github.com/murkland/gbarom/lz77"
 )
 
 type ROMInfo struct {

@@ -10,9 +10,9 @@ import (
 	"log"
 	"os"
 
-	"github.com/yumland/bnrom/paletted"
-	"github.com/yumland/bnrom/sprites"
-	"github.com/yumland/gbarom/bgr555"
+	"github.com/murkland/bnrom/paletted"
+	"github.com/murkland/bnrom/sprites"
+	"github.com/murkland/gbarom/bgr555"
 )
 
 type ROMInfo struct {

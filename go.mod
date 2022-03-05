@@ -1,11 +1,11 @@
-module github.com/yumland/bnrom
+module github.com/murkland/bnrom
 
 go 1.18
 
 require (
 	github.com/schollz/progressbar/v3 v3.8.6
-	github.com/yumland/gbarom v0.0.0-20220219084935-da6cfb7daaf2
-	github.com/yumland/pngchunks v0.0.0-20220219084845-29962d363499
+	github.com/murkland/gbarom v0.0.0-20220219084935-da6cfb7daaf2
+	github.com/murkland/pngchunks v0.0.0-20220219084845-29962d363499
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 )
 

@@ -15,10 +15,10 @@ import (
 	"runtime"
 
 	"github.com/schollz/progressbar/v3"
-	"github.com/yumland/bnrom/paletted"
-	"github.com/yumland/bnrom/sprites"
-	"github.com/yumland/gbarom"
-	"github.com/yumland/pngchunks"
+	"github.com/murkland/bnrom/paletted"
+	"github.com/murkland/bnrom/sprites"
+	"github.com/murkland/gbarom"
+	"github.com/murkland/pngchunks"
 	"golang.org/x/sync/errgroup"
 )
 

@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/yumland/gbarom"
+	"github.com/murkland/gbarom"
 )
 
 var (

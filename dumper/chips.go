@@ -12,10 +12,10 @@ import (
 	"os"
 
 	"github.com/schollz/progressbar/v3"
-	"github.com/yumland/bnrom/chips"
-	"github.com/yumland/bnrom/paletted"
-	"github.com/yumland/gbarom"
-	"github.com/yumland/pngchunks"
+	"github.com/murkland/bnrom/chips"
+	"github.com/murkland/bnrom/paletted"
+	"github.com/murkland/gbarom"
+	"github.com/murkland/pngchunks"
 	"golang.org/x/sync/errgroup"
 )
 
