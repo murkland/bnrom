@@ -7,6 +7,10 @@ github.com/mattn/go-runewidth v0.0.13 h1:lTGmDsbAYt5DmK6OnoV7EuIF1wEIFAcxld6ypU4
 github.com/mattn/go-runewidth v0.0.13/go.mod h1:Jdepj2loyihRzMpdS35Xk/zdY8IAYHsh153qUoGf23w=
 github.com/mitchellh/colorstring v0.0.0-20190213212951-d06e56a500db h1:62I3jR2EmQ4l5rM/4FEfDWcRD+abF5XlKShorW5LRoQ=
 github.com/mitchellh/colorstring v0.0.0-20190213212951-d06e56a500db/go.mod h1:l0dey0ia/Uv7NcFFVbCLtqEBQbrT4OCwCSKTEv6enCw=
+github.com/murkland/gbarom v0.0.0-20220305211653-6a9b5253e1ca h1:0tT5WmOXO8AZ6wMY11mHZ6vDDGbpwT2zigu+47mbshg=
+github.com/murkland/gbarom v0.0.0-20220305211653-6a9b5253e1ca/go.mod h1:VYwctNt59e6yp1iFa26nZm+2TezF5H45tJ6DfGFyEko=
+github.com/murkland/pngchunks v0.0.0-20220305211659-3f322c254e68 h1:m/83dMW0EpFweuOEJiHUsdtKwcqxdLj91LYM+i91zBg=
+github.com/murkland/pngchunks v0.0.0-20220305211659-3f322c254e68/go.mod h1:R10AASouoLqvXfvNYg87Ks/ScgVocSvO/sj173nU8nE=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/rivo/uniseg v0.2.0 h1:S1pD9weZBuJdFmowNwbpi7BJ8TNftyUImj/0WQi72jY=
@@ -16,10 +20,6 @@ github.com/schollz/progressbar/v3 v3.8.6/go.mod h1:W5IEwbJecncFGBvuEh4A7HT1nZZ6W
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/testify v1.3.0 h1:TivCn/peBQ7UY8ooIcPgZFpTNSz0Q2U6UrFlUfqbe0Q=
 github.com/stretchr/testify v1.3.0/go.mod h1:M5WIy9Dh21IEIfnGCwXGc5bZfKNJtfHm1UVUgZn+9EI=
-github.com/murkland/gbarom v0.0.0-20220219084935-da6cfb7daaf2 h1:MJFUA7T5o6E0vmedN0m86QD7QckiibbLW4XRoo0IMao=
-github.com/murkland/gbarom v0.0.0-20220219084935-da6cfb7daaf2/go.mod h1:cBILv+KKQF/P4HYn2n1ldMREXPtin4b2pzxgpwk2HH8=
-github.com/murkland/pngchunks v0.0.0-20220219084845-29962d363499 h1:y1KJloRWYkATfDAl3opJi1/kzH6dmjNvUpOn51oaQSw=
-github.com/murkland/pngchunks v0.0.0-20220219084845-29962d363499/go.mod h1:U09K8Yc+Ai/d5U2SO0gHBM+5eJ3dy6jBBvsmr8FVr0w=
 golang.org/x/crypto v0.0.0-20220131195533-30dcbda58838/go.mod h1:IxCIyHEi3zRg3s0A5j5BB6A9Jmi73HwBIUl50j+osU4=
 golang.org/x/crypto v0.0.0-20220214200702-86341886e292 h1:f+lwQ+GtmgoY+A2YaQxlSOnDjXcQ7ZRLWOHbC6HtRqE=
 golang.org/x/crypto v0.0.0-20220214200702-86341886e292/go.mod h1:IxCIyHEi3zRg3s0A5j5BB6A9Jmi73HwBIUl50j+osU4=
