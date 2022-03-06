@@ -44,9 +44,9 @@ var dblBeastPalette = mustDecodePalette([]uint8{0x7F, 0x7D, 0x9F, 0x13, 0x5E, 0x
 func FindROMInfo(romID string) *ROMInfo {
 	switch romID {
 	case "BR6E", "BR6P", "BR5E", "BR5P":
-		return &ROMInfo{0x00021DD4, 410, 0x000270C4}
+		return &ROMInfo{0x00021DD4, 410, 0x0001ED20}
 	case "BR6J", "BR5J":
-		return &ROMInfo{0x000221E8, 410, 0x000274D8}
+		return &ROMInfo{0x000221E8, 410, 0x0001F144}
 	}
 	return nil
 }
