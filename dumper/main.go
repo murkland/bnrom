@@ -12,6 +12,7 @@ var (
 	dumpSpritesF     = flag.Bool("dump_sprites", true, "dump sprites")
 	dumpBattletilesF = flag.Bool("dump_battletiles", true, "dump battletiles")
 	dumpChipsF       = flag.Bool("dump_chips", true, "dump chips")
+	dumpFontsF       = flag.Bool("dump_fonts", true, "dump fonts")
 )
 
 type fctrlFrameInfo struct {
@@ -58,6 +59,13 @@ func main() {
 	if *dumpChipsF {
 		log.Printf("Dumping chips...")
 		if err := dumpChips(f, "chips.png", "chipicons.png"); err != nil {
+			log.Fatalf("%s", err)
+		}
+	}
+
+	if *dumpFontsF {
+		log.Printf("Dumping fonts...")
+		if err := dumpFonts(f, "fonts"); err != nil {
 			log.Fatalf("%s", err)
 		}
 	}
