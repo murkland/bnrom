@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"image"
-	"image/color"
 	"io"
 	"os"
 	"strconv"
@@ -50,7 +49,7 @@ func dumpFonts(r io.ReadSeeker, outFn string) error {
 		return fmt.Errorf("%w while dumping tall font", err)
 	}
 
-	if _, err := r.Seek(info.Tall2Offset, io.SeekStart); err != nil {
+	if _, err := r.Seek(info.Tall2Offset+0x60, io.SeekStart); err != nil {
 		return fmt.Errorf("%w while seeking to tall font pointer", err)
 	}
 
@@ -108,7 +107,7 @@ func dumpTinyFont(r io.ReadSeeker, outFn string) error {
 	}
 
 	for i, glyph := range glyphs {
-		if err := bdf.WriteGlyph(outF, p, rune(strconv.Itoa(i)[0]), glyph); err != nil {
+		if err := bdf.WriteGlyph(outF, p, 8, rune(strconv.Itoa(i)[0]), glyph); err != nil {
 			return fmt.Errorf("%w while writing bdf properties", err)
 		}
 	}
@@ -155,7 +154,7 @@ func dumpTallFont(r io.ReadSeeker, charmap []rune, outFn string) error {
 			return fmt.Errorf("%w while reading tall font glyph %d", err, i)
 		}
 
-		if err := bdf.WriteGlyph(outF, p, charmap[i], glyph); err != nil {
+		if err := bdf.WriteGlyph(outF, p, 8, charmap[i], glyph); err != nil {
 			return fmt.Errorf("%w while writing bdf properties", err)
 		}
 	}
@@ -187,14 +186,13 @@ func dumpTall2Font(r io.ReadSeeker, charmap []rune, outFn string) error {
 		return fmt.Errorf("%w while writing bdf properties", err)
 	}
 
-	for i := 0; i < 448; i++ {
+	for i := 1; i < 448; i++ {
 		glyph, err := sprites.ReadTile(r, image.Rect(0, 0, 16, 12))
 		if err != nil {
 			return err
 		}
-		glyph.Palette = color.Palette{color.RGBA{0, 0, 0, 0}, color.RGBA{0, 0, 0, 255}, color.RGBA{0, 0, 0, 255}, color.RGBA{0, 0, 0, 255}, color.RGBA{0, 0, 0, 255}, color.RGBA{0, 0, 0, 255}, color.RGBA{0, 0, 0, 255}}
 
-		if err := bdf.WriteGlyph(outF, p, charmap[i], glyph); err != nil {
+		if err := bdf.WriteGlyph(outF, p, 12, charmap[i], glyph); err != nil {
 			return fmt.Errorf("%w while writing bdf properties", err)
 		}
 	}

@@ -26,7 +26,7 @@ func WriteProperties(w io.Writer, p Properties) error {
 		return err
 	}
 
-	if _, err := fmt.Fprintf(w, "SIZE %d %d %d\n", p.Size, p.DPI.X, p.DPI.Y); err != nil {
+	if _, err := fmt.Fprintf(w, "SIZE %d %d %d 2\n", p.Size, p.DPI.X, p.DPI.Y); err != nil {
 		return err
 	}
 
@@ -57,7 +57,7 @@ func WriteProperties(w io.Writer, p Properties) error {
 	return nil
 }
 
-func WriteGlyph(w io.Writer, p Properties, codepoint rune, img *image.Paletted) error {
+func WriteGlyph(w io.Writer, p Properties, width int, codepoint rune, img *image.Paletted) error {
 	if _, err := fmt.Fprintf(w, "STARTCHAR U+%04X\n", codepoint); err != nil {
 		return err
 	}
@@ -66,11 +66,11 @@ func WriteGlyph(w io.Writer, p Properties, codepoint rune, img *image.Paletted) 
 		return err
 	}
 
-	if _, err := fmt.Fprintf(w, "SWIDTH %d 0\n", img.Rect.Dx()*1000/p.BBox.Dx()); err != nil {
+	if _, err := fmt.Fprintf(w, "SWIDTH %d 0\n", width*1000/p.BBox.Dx()); err != nil {
 		return err
 	}
 
-	if _, err := fmt.Fprintf(w, "DWIDTH %d 0\n", img.Rect.Dx()); err != nil {
+	if _, err := fmt.Fprintf(w, "DWIDTH %d 0\n", width); err != nil {
 		return err
 	}
 
@@ -84,15 +84,18 @@ func WriteGlyph(w io.Writer, p Properties, codepoint rune, img *image.Paletted) 
 
 	for j := 0; j < img.Bounds().Dy(); j++ {
 		row := img.Pix[j*img.Bounds().Dx() : (j+1)*img.Bounds().Dx()]
-		if r := len(row) % 8; r != 0 {
-			row = append(row, make([]uint8, 8-r)...)
+		if r := len(row) % 4; r != 0 {
+			row = append(row, make([]uint8, 4-r)...)
 		}
 
-		for i := 0; i < len(row); i += 8 {
+		for j := 0; j < len(row); j += 4 {
 			var mask uint8
-			for i, b := range row[i : i+8] {
-				if b != 0 {
-					mask |= 1 << (7 - i)
+			for i, b := range row[j : j+4] {
+				if b == 1 {
+					mask |= 0b11 << ((4 - i - 1) * 2)
+				}
+				if b == 3 {
+					mask |= 0b01 << ((4 - i - 1) * 2)
 				}
 			}
 			fmt.Fprintf(w, "%02X", mask)
