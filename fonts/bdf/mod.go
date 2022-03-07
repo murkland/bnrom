@@ -18,7 +18,7 @@ type Properties struct {
 }
 
 func WriteProperties(w io.Writer, p Properties) error {
-	if _, err := fmt.Fprintf(w, "STARTFONT 2.1\n"); err != nil {
+	if _, err := fmt.Fprintf(w, "STARTFONT 2.3\n"); err != nil {
 		return err
 	}
 
@@ -27,6 +27,10 @@ func WriteProperties(w io.Writer, p Properties) error {
 	}
 
 	if _, err := fmt.Fprintf(w, "SIZE %d %d %d 2\n", p.Size, p.DPI.X, p.DPI.Y); err != nil {
+		return err
+	}
+
+	if _, err := fmt.Fprintf(w, "BITS_PER_PIXEL 2\n"); err != nil {
 		return err
 	}
 
