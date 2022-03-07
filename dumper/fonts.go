@@ -192,6 +192,7 @@ func dumpTall2Font(r io.ReadSeeker, charmap []rune, outFn string) error {
 			return err
 		}
 
+		// TODO: Find the font metrics.
 		if err := bdf.WriteGlyph(outF, p, 12, charmap[i], glyph); err != nil {
 			return fmt.Errorf("%w while writing bdf properties", err)
 		}
