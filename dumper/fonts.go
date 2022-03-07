@@ -207,7 +207,6 @@ func dumpTall2Font(r io.ReadSeeker, info *fonts.ROMInfo, outFn string) error {
 			glyph = image.NewPaletted(p.BBox, nil)
 		}
 
-		// TODO: Find the font metrics.
 		if err := bdf.WriteGlyph(outF, p, metrics[i], info.Charmap[i], glyph); err != nil {
 			return fmt.Errorf("%w while writing bdf properties", err)
 		}
