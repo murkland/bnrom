@@ -41,7 +41,7 @@ func tall2MetricsOffset(gameTitle string) int64 {
 	case "ROCKEXE6_RXX":
 		return 0x00044EEC
 	case "ROCKEXE6_GXX":
-		return 0x00044EEC
+		return 0x00044EBC
 	}
 	return 0
 }
