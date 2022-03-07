@@ -5,12 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"image"
+	"image/color"
 	"io"
 	"os"
 	"strconv"
 
 	"github.com/murkland/bnrom/fonts"
 	"github.com/murkland/bnrom/fonts/bdf"
+	"github.com/murkland/bnrom/sprites"
 	"github.com/murkland/gbarom"
 )
 
@@ -20,7 +22,12 @@ func dumpFonts(r io.ReadSeeker, outFn string) error {
 		return err
 	}
 
-	info := fonts.FindROMInfo(romID)
+	romTitle, err := gbarom.ReadROMTitle(r)
+	if err != nil {
+		return err
+	}
+
+	info := fonts.FindROMInfo(romID, romTitle)
 	if info == nil {
 		return errors.New("unsupported game")
 	}
@@ -40,6 +47,14 @@ func dumpFonts(r io.ReadSeeker, outFn string) error {
 	}
 
 	if err := dumpTallFont(r, info.Charmap, outFn+"/tall.bdf"); err != nil {
+		return fmt.Errorf("%w while dumping tall font", err)
+	}
+
+	if _, err := r.Seek(info.Tall2Offset, io.SeekStart); err != nil {
+		return fmt.Errorf("%w while seeking to tall font pointer", err)
+	}
+
+	if err := dumpTall2Font(r, info.Charmap, outFn+"/tall2.bdf"); err != nil {
 		return fmt.Errorf("%w while dumping tall font", err)
 	}
 
@@ -139,6 +154,45 @@ func dumpTallFont(r io.ReadSeeker, charmap []rune, outFn string) error {
 		if err != nil {
 			return fmt.Errorf("%w while reading tall font glyph %d", err, i)
 		}
+
+		if err := bdf.WriteGlyph(outF, p, charmap[i], glyph); err != nil {
+			return fmt.Errorf("%w while writing bdf properties", err)
+		}
+	}
+
+	if err := bdf.WriteTrailer(outF); err != nil {
+		return fmt.Errorf("%w while writing bdf trailer", err)
+	}
+
+	return nil
+}
+
+func dumpTall2Font(r io.ReadSeeker, charmap []rune, outFn string) error {
+	outF, err := os.Create(outFn)
+	if err != nil {
+		return err
+	}
+	defer outF.Close()
+
+	p := bdf.Properties{
+		XLFD:      "-murkland-tall2-thin-r-normal--16-160-75-75-c-80-iso10646-1",
+		Size:      16,
+		DPI:       image.Point{75, 75},
+		BBox:      image.Rect(0, 0, 16, 12),
+		Ascent:    12,
+		Descent:   2,
+		NumGlyphs: 448,
+	}
+	if err := bdf.WriteProperties(outF, p); err != nil {
+		return fmt.Errorf("%w while writing bdf properties", err)
+	}
+
+	for i := 0; i < 448; i++ {
+		glyph, err := sprites.ReadTile(r, image.Rect(0, 0, 16, 12))
+		if err != nil {
+			return err
+		}
+		glyph.Palette = color.Palette{color.RGBA{0, 0, 0, 0}, color.RGBA{0, 0, 0, 255}, color.RGBA{0, 0, 0, 255}, color.RGBA{0, 0, 0, 255}, color.RGBA{0, 0, 0, 255}, color.RGBA{0, 0, 0, 255}, color.RGBA{0, 0, 0, 255}}
 
 		if err := bdf.WriteGlyph(outF, p, charmap[i], glyph); err != nil {
 			return fmt.Errorf("%w while writing bdf properties", err)

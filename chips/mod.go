@@ -120,7 +120,7 @@ func ReadChipImage(r io.ReadSeeker, ci ChipInfo, ereaderGigaPalette color.Palett
 	img := image.NewPaletted(image.Rect(0, 0, Width, Height), nil)
 	for j := 0; j < 6; j++ {
 		for i := 0; i < 7; i++ {
-			tileImg, err := sprites.ReadTile(r)
+			tileImg, err := sprites.ReadTile(r, image.Rect(0, 0, 8, 8))
 			if err != nil {
 				return nil, fmt.Errorf("%w while reading tile (%d, %d)", err, i, j)
 			}
@@ -201,7 +201,7 @@ func ReadChipIcon(r io.ReadSeeker, ci ChipInfo) (*image.Paletted, error) {
 	img := image.NewPaletted(image.Rect(0, 0, IconWidth, IconHeight), nil)
 	for j := 0; j < 2; j++ {
 		for i := 0; i < 2; i++ {
-			tileImg, err := sprites.ReadTile(r)
+			tileImg, err := sprites.ReadTile(r, image.Rect(0, 0, 8, 8))
 			if err != nil {
 				log.Fatalf("%s", err)
 			}

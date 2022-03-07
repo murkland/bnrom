@@ -147,7 +147,7 @@ func ReadTiles(r io.ReadSeeker, ri ROMInfo) ([]*image.Paletted, error) {
 			}
 			tIndex--
 
-			tileImg, err := sprites.ReadTile(bytes.NewBuffer(rawTiles[tIndex*8*8/2 : (tIndex+1)*8*8/2]))
+			tileImg, err := sprites.ReadTile(bytes.NewBuffer(rawTiles[tIndex*8*8/2:(tIndex+1)*8*8/2]), image.Rect(0, 0, 8, 8))
 			if err != nil {
 				return nil, fmt.Errorf("%w while reading tile %d", err, tIndex)
 			}

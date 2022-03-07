@@ -173,13 +173,13 @@ type Frame struct {
 	OAMEntries []OAMEntry
 }
 
-func ReadTile(r io.Reader) (*image.Paletted, error) {
-	var pixels [8 * 8 / 2]uint8
-	if _, err := io.ReadFull(r, pixels[:]); err != nil {
+func ReadTile(r io.Reader, bounds image.Rectangle) (*image.Paletted, error) {
+	pixels := make([]uint8, bounds.Dx()*bounds.Dy()/2)
+	if _, err := io.ReadFull(r, pixels); err != nil {
 		return nil, err
 	}
 
-	pimg := image.NewPaletted(image.Rect(0, 0, 8, 8), nil)
+	pimg := image.NewPaletted(bounds, nil)
 	for i, p := range pixels {
 		pimg.Pix[i*2] = p & 0xF
 		pimg.Pix[i*2+1] = p >> 4
@@ -247,7 +247,7 @@ func ReadFrame(r io.ReadSeeker, offset int64) (Frame, error) {
 	fr.Tiles = make([]*image.Paletted, numTiles)
 	for i := 0; i < int(numTiles); i++ {
 		var err error
-		fr.Tiles[i], err = ReadTile(r)
+		fr.Tiles[i], err = ReadTile(r, image.Rect(0, 0, 8, 8))
 		if err != nil {
 			return fr, fmt.Errorf("%w while reading tile %d at pointer 0x%08x", err, i, rawFr.TilesPtr)
 		}
