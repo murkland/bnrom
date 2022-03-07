@@ -49,11 +49,7 @@ func dumpFonts(r io.ReadSeeker, outFn string) error {
 		return fmt.Errorf("%w while dumping tall font", err)
 	}
 
-	if _, err := r.Seek(info.Tall2Offset+0x60, io.SeekStart); err != nil {
-		return fmt.Errorf("%w while seeking to tall font pointer", err)
-	}
-
-	if err := dumpTall2Font(r, info.Charmap, outFn+"/tall2.bdf"); err != nil {
+	if err := dumpTall2Font(r, info, outFn+"/tall2.bdf"); err != nil {
 		return fmt.Errorf("%w while dumping tall font", err)
 	}
 
@@ -166,7 +162,7 @@ func dumpTallFont(r io.ReadSeeker, charmap []rune, outFn string) error {
 	return nil
 }
 
-func dumpTall2Font(r io.ReadSeeker, charmap []rune, outFn string) error {
+func dumpTall2Font(r io.ReadSeeker, info *fonts.ROMInfo, outFn string) error {
 	outF, err := os.Create(outFn)
 	if err != nil {
 		return err
@@ -186,14 +182,33 @@ func dumpTall2Font(r io.ReadSeeker, charmap []rune, outFn string) error {
 		return fmt.Errorf("%w while writing bdf properties", err)
 	}
 
-	for i := 1; i < 448; i++ {
-		glyph, err := sprites.ReadTile(r, image.Rect(0, 0, 16, 12))
-		if err != nil {
-			return err
+	if _, err := r.Seek(info.Tall2MetricsOffset, io.SeekStart); err != nil {
+		return fmt.Errorf("%w while seeking to tall font pointer", err)
+	}
+
+	metrics, err := fonts.ReadMetrics(r, p.NumGlyphs)
+	if err != nil {
+		return fmt.Errorf("%w while reading metrics properties", err)
+	}
+
+	if _, err := r.Seek(info.Tall2Offset+0x60, io.SeekStart); err != nil {
+		return fmt.Errorf("%w while seeking to tall font pointer", err)
+	}
+
+	for i := 0; i < p.NumGlyphs; i++ {
+		var glyph *image.Paletted
+		if i > 0 {
+			var err error
+			glyph, err = sprites.ReadTile(r, image.Rect(0, 0, 16, 12))
+			if err != nil {
+				return err
+			}
+		} else {
+			glyph = image.NewPaletted(p.BBox, nil)
 		}
 
 		// TODO: Find the font metrics.
-		if err := bdf.WriteGlyph(outF, p, 12, charmap[i], glyph); err != nil {
+		if err := bdf.WriteGlyph(outF, p, metrics[i], info.Charmap[i], glyph); err != nil {
 			return fmt.Errorf("%w while writing bdf properties", err)
 		}
 	}
