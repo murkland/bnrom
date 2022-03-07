@@ -24,6 +24,10 @@ func tall2Offset(gameTitle string) int64 {
 		return 0x006ACD60
 	case "MEGAMAN6_GXX":
 		return 0x006AACAC
+	case "ROCKEXE6_RXX":
+		return 0x006CBE80
+	case "ROCKEXE6_GXX":
+		return 0x006C9DB4
 	}
 	return 0
 }
@@ -34,6 +38,10 @@ func tall2MetricsOffset(gameTitle string) int64 {
 		return 0x00043CA4
 	case "MEGAMAN6_GXX":
 		return 0x00043C74
+	case "ROCKEXE6_RXX":
+		return 0x00044EEC
+	case "ROCKEXE6_GXX":
+		return 0x00044EEC
 	}
 	return 0
 }
@@ -47,7 +55,7 @@ func FindROMInfo(romID string, gameTitle string) *ROMInfo {
 		}
 	case "BR6J", "BR5J":
 		return &ROMInfo{
-			0x0001DC78, 0x0001CC48, 0, 0,
+			0x0001DC78, 0x0001CC48, tall2Offset(gameTitle), tall2MetricsOffset(gameTitle),
 			[]rune(" 0123456789ウアイオエケコカクキセサソシステトツタチネノヌナニヒヘホハフミマメムモヤヨユロルリレラン熱斗ワヲギガゲゴグゾジゼズザデドヅダヂベビボバブピパペプポゥァィォェュヴッョャABCDEFGHIJKLMNOPQRSTUVWXYZ*-×=:%?+■�ー!��&、゜.・;’\"~/()「」����_�周えおうあいけくきこかせそすさしつとてたちねのなぬにへふほはひめむみもまゆよやるらりろれ�んをわ研げぐごがぎぜずじぞざでどづだぢべばびぼぶぽぷぴぺぱぅぁぃぉぇゅょっゃabcdefghijklmnopqrstuvwxyz容量全木�無現実◯✗緑道不止彩起父集院一二三四五六七八陽十百千万脳上下左右手来日目月獣各人入出山口光電気綾科次名前学校省祐室世界高朗枚野悪路闇大小中自分間系花問究門城王兄化葉行街屋水見終新桜先生長今了点井子言太属風会性持時勝赤代年火改計画職体波回外地員正造値合戦川秋原町晴用金郎作数方社攻撃力同武何発少教以白早暮面組後文字本階明才者向犬々ヶ連射舟戸切土炎伊夫鉄国男天老師堀杉士悟森霧麻剛垣"),
 		}
 	}
