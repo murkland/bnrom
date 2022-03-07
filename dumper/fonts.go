@@ -5,12 +5,15 @@ import (
 	"errors"
 	"fmt"
 	"image"
+	"image/color"
+	"image/png"
 	"io"
 	"os"
 	"strconv"
 
 	"github.com/murkland/bnrom/fonts"
 	"github.com/murkland/bnrom/fonts/bdf"
+	"github.com/murkland/bnrom/paletted"
 	"github.com/murkland/bnrom/sprites"
 	"github.com/murkland/gbarom"
 )
@@ -37,7 +40,7 @@ func dumpFonts(r io.ReadSeeker, outFn string) error {
 		return fmt.Errorf("%w while seeking to tiny font pointer", err)
 	}
 
-	if err := dumpTinyFont(r, outFn+"/tiny.bdf"); err != nil {
+	if err := dumpTinyFont(r, outFn+"/tinynum.bdf"); err != nil {
 		return fmt.Errorf("%w while dumping tiny font", err)
 	}
 
@@ -195,6 +198,15 @@ func dumpTall2Font(r io.ReadSeeker, info *fonts.ROMInfo, outFn string) error {
 		return fmt.Errorf("%w while seeking to tall font pointer", err)
 	}
 
+	img := image.NewPaletted(image.Rect(0, 0, 200, 400), color.Palette{
+		color.RGBA{0x0, 0x0, 0x0, 0xff},
+		color.RGBA{0xff, 0xff, 0xff, 0xff},
+		color.RGBA{0, 0, 0, 0},
+		color.RGBA{0xff, 0xff, 0xff, 0x88},
+	})
+
+	x := 1
+	y := 1
 	for i := 0; i < p.NumGlyphs; i++ {
 		var glyph *image.Paletted
 		if i > 0 {
@@ -210,10 +222,27 @@ func dumpTall2Font(r io.ReadSeeker, info *fonts.ROMInfo, outFn string) error {
 		if err := bdf.WriteGlyph(outF, p, metrics[i], info.Charmap[i], glyph); err != nil {
 			return fmt.Errorf("%w while writing bdf properties", err)
 		}
+
+		paletted.DrawOver(img, image.Rect(x, y, x+glyph.Rect.Dx(), y+glyph.Rect.Dy()), glyph, image.Point{})
+		x += metrics[i] + 2
+		if x+glyph.Rect.Dx() >= img.Rect.Dx() {
+			x = 1
+			y += 13
+		}
 	}
 
 	if err := bdf.WriteTrailer(outF); err != nil {
 		return fmt.Errorf("%w while writing bdf trailer", err)
+	}
+
+	outF2, err := os.Create("foronb.png")
+	if err != nil {
+		return err
+	}
+	defer outF2.Close()
+
+	if err := png.Encode(outF2, img); err != nil {
+		return err
 	}
 
 	return nil
