@@ -63,6 +63,8 @@ func WriteProperties(w io.Writer, p Properties) error {
 }
 
 func WriteGlyph(w io.Writer, p Properties, width int, codepoint rune, img *image.Alpha) error {
+	ppb := 8 / p.BPP
+
 	if _, err := fmt.Fprintf(w, "STARTCHAR U+%04X\n", codepoint); err != nil {
 		return err
 	}
@@ -89,7 +91,6 @@ func WriteGlyph(w io.Writer, p Properties, width int, codepoint rune, img *image
 
 	for j := 0; j < img.Bounds().Dy(); j++ {
 		row := img.Pix[j*img.Bounds().Dx() : (j+1)*img.Bounds().Dx()]
-		ppb := 8 / p.BPP
 
 		if r := len(row) % ppb; r != 0 {
 			row = append(row, make([]uint8, ppb-r)...)
