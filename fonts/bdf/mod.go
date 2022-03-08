@@ -26,7 +26,7 @@ func WriteProperties(w io.Writer, p Properties) error {
 		return err
 	}
 
-	if _, err := fmt.Fprintf(w, "SIZE %d %d %d 2\n", p.Size, p.DPI.X, p.DPI.Y); err != nil {
+	if _, err := fmt.Fprintf(w, "SIZE %d %d %d 4\n", p.Size, p.DPI.X, p.DPI.Y); err != nil {
 		return err
 	}
 
