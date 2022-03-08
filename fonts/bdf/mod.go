@@ -30,7 +30,7 @@ func WriteProperties(w io.Writer, p Properties) error {
 		return err
 	}
 
-	if _, err := fmt.Fprintf(w, "BITS_PER_PIXEL 2\n"); err != nil {
+	if _, err := fmt.Fprintf(w, "BITS_PER_PIXEL 4\n"); err != nil {
 		return err
 	}
 
@@ -92,14 +92,14 @@ func WriteGlyph(w io.Writer, p Properties, width int, codepoint rune, img *image
 			row = append(row, make([]uint8, 4-r)...)
 		}
 
-		for j := 0; j < len(row); j += 4 {
+		for j := 0; j < len(row); j += 2 {
 			var mask uint8
-			for i, b := range row[j : j+4] {
+			for i, b := range row[j : j+2] {
 				if b == 1 {
-					mask |= 0b11 << ((4 - i - 1) * 2)
+					mask |= 0b1111 << ((2 - i - 1) * 4)
 				}
 				if b == 3 {
-					mask |= 0b01 << ((4 - i - 1) * 2)
+					mask |= 0b0001 << ((2 - i - 1) * 4)
 				}
 			}
 			fmt.Fprintf(w, "%02X", mask)
