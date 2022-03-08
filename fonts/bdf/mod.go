@@ -22,7 +22,7 @@ type Properties struct {
 var ErrUnsupportedBPP = errors.New("bdf: unsupported bpp, must be one of 1, 2, 4, 8")
 
 func checkBPP(p Properties) error {
-	if p.BPP != 1 && p.BPP != 2 && p.BPP != 4 && p.BPP != 8 {
+	if 8%p.BPP != 0 {
 		return ErrUnsupportedBPP
 	}
 	return nil
