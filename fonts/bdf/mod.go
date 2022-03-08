@@ -1,6 +1,7 @@
 package bdf
 
 import (
+	"errors"
 	"fmt"
 	"image"
 	"io"
@@ -18,7 +19,20 @@ type Properties struct {
 	NumGlyphs int
 }
 
+var ErrUnsupportedBPP = errors.New("bdf: unsupported bpp, must be one of 1, 2, 4, 8")
+
+func checkBPP(p Properties) error {
+	if p.BPP != 1 && p.BPP != 2 && p.BPP != 4 && p.BPP != 8 {
+		return ErrUnsupportedBPP
+	}
+	return nil
+}
+
 func WriteProperties(w io.Writer, p Properties) error {
+	if err := checkBPP(p); err != nil {
+		return err
+	}
+
 	if _, err := fmt.Fprintf(w, "STARTFONT 2.3\n"); err != nil {
 		return err
 	}
@@ -63,6 +77,10 @@ func WriteProperties(w io.Writer, p Properties) error {
 }
 
 func WriteGlyph(w io.Writer, p Properties, width int, codepoint rune, img *image.Alpha) error {
+	if err := checkBPP(p); err != nil {
+		return err
+	}
+
 	ppb := 8 / p.BPP
 
 	if _, err := fmt.Fprintf(w, "STARTCHAR U+%04X\n", codepoint); err != nil {
