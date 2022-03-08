@@ -11,7 +11,6 @@ import (
 
 	"github.com/murkland/bnrom/fonts"
 	"github.com/murkland/bnrom/fonts/bdf"
-	"github.com/murkland/bnrom/sprites"
 	"github.com/murkland/gbarom"
 )
 
@@ -68,7 +67,7 @@ func dumpTinyFont(r io.ReadSeeker, outFn string) error {
 		offsets = append(offsets, int64(offset&^0x08000000))
 	}
 
-	glyphs := make([]*image.Paletted, len(offsets))
+	glyphs := make([]*image.Alpha, len(offsets))
 
 	for i, offset := range offsets {
 		if _, err := r.Seek(offset, io.SeekStart); err != nil {
@@ -93,6 +92,7 @@ func dumpTinyFont(r io.ReadSeeker, outFn string) error {
 		XLFD:      "-murkland-tiny-medium-r-normal--16-160-75-75-c-80-iso10646-1",
 		Size:      16,
 		DPI:       image.Point{75, 75},
+		BPP:       4,
 		BBox:      image.Rect(0, 0, 8, 16),
 		Ascent:    12,
 		Descent:   2,
@@ -135,6 +135,7 @@ func dumpTallFont(r io.ReadSeeker, charmap []rune, outFn string) error {
 		XLFD:      "-murkland-tall-medium-r-normal--16-160-75-75-c-80-iso10646-1",
 		Size:      16,
 		DPI:       image.Point{75, 75},
+		BPP:       4,
 		BBox:      image.Rect(0, 0, 8, 16),
 		Ascent:    12,
 		Descent:   2,
@@ -173,6 +174,7 @@ func dumpTall2Font(r io.ReadSeeker, info *fonts.ROMInfo, outFn string) error {
 		XLFD:      "-murkland-tall2-thin-r-normal--16-160-75-75-c-80-iso10646-1",
 		Size:      16,
 		DPI:       image.Point{75, 75},
+		BPP:       4,
 		BBox:      image.Rect(0, 0, 16, 12),
 		Ascent:    12,
 		Descent:   2,
@@ -196,15 +198,15 @@ func dumpTall2Font(r io.ReadSeeker, info *fonts.ROMInfo, outFn string) error {
 	}
 
 	for i := 0; i < p.NumGlyphs; i++ {
-		var glyph *image.Paletted
+		var glyph *image.Alpha
 		if i > 0 {
 			var err error
-			glyph, err = sprites.ReadTile(r, image.Rect(0, 0, 16, 12))
+			glyph, err = fonts.Read16x12Glyph(r)
 			if err != nil {
 				return err
 			}
 		} else {
-			glyph = image.NewPaletted(p.BBox, nil)
+			glyph = image.NewAlpha(p.BBox)
 		}
 
 		if err := bdf.WriteGlyph(outF, p, metrics[i], info.Charmap[i], glyph); err != nil {

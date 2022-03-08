@@ -67,8 +67,8 @@ var fontPalette = color.Palette{
 	color.RGBA{0, 0, 0, 255},
 }
 
-func ReadGlyph(r io.Reader, opaqueColor uint8) (*image.Paletted, error) {
-	glyph := image.NewPaletted(image.Rect(0, 0, 8, 16), fontPalette)
+func ReadGlyph(r io.Reader, opaqueColor uint8) (*image.Alpha, error) {
+	glyph := image.NewAlpha(image.Rect(0, 0, 8, 16))
 	for o := 0; o < 2; o++ {
 		tile, err := sprites.ReadTile(r, image.Rect(0, 0, 8, 8))
 		if err != nil {
@@ -78,7 +78,7 @@ func ReadGlyph(r io.Reader, opaqueColor uint8) (*image.Paletted, error) {
 		for j := 0; j < 8; j++ {
 			for i := 0; i < 8; i++ {
 				if tile.Pix[j*8+i] == opaqueColor {
-					glyph.Pix[(j+o*8)*8+i] = 1
+					glyph.Pix[(j+o*8)*8+i] = 0xff
 				}
 			}
 		}
@@ -87,6 +87,28 @@ func ReadGlyph(r io.Reader, opaqueColor uint8) (*image.Paletted, error) {
 	return glyph, nil
 }
 
+func Read16x12Glyph(r io.Reader) (*image.Alpha, error) {
+	tile, err := sprites.ReadTile(r, image.Rect(0, 0, 16, 12))
+	if err != nil {
+		return nil, err
+	}
+
+	glyph := image.NewAlpha(tile.Bounds())
+	for j := 0; j < tile.Rect.Dy(); j++ {
+		for i := 0; i < tile.Rect.Dx(); i++ {
+			val := uint8(0)
+			switch tile.Pix[j*tile.Rect.Dx()+i] {
+			case 1:
+				val = 0xff
+			case 3:
+				val = 0x20
+			}
+			glyph.Pix[j*tile.Rect.Dx()+i] = val
+		}
+	}
+
+	return glyph, nil
+}
 func ReadMetrics(r io.Reader, n int) ([]int, error) {
 	widths := make([]int, n)
 	for i := 0; i < len(widths); i++ {
